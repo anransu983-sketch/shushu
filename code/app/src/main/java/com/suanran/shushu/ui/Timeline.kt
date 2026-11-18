@@ -132,7 +132,8 @@ fun <T> LazyListScope.timelineItems(
         when (r) {
             is TimelineRow.Day -> if (r.open) {
                 stickyHeader(key = "$prefix-day-${r.day}") {
-                    Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).clickable { onToggle(r.day) }
+                    // Frosted, so the day stays readable while records slide under it.
+                    Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)).clickable { onToggle(r.day) }
                         .padding(top = 20.dp)) {
                         DayTitle(r.day, r.entries.size)
                     }

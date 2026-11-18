@@ -93,8 +93,11 @@ import java.text.NumberFormat
 // tinted icon tile, inset dividers and blue text actions.
 
 @Composable
-fun GroupTitle(title: String, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
+fun GroupTitle(title: String, modifier: Modifier = Modifier, hamster: HamsterKind? = null, trailing: @Composable RowScope.() -> Unit = {}) {
     Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (hamster != null) {
+            HamsterIcon(hamster, 20.dp, modifier = Modifier.padding(end = 6.dp))
+        }
         Text(
             title,
             style = MaterialTheme.typography.labelMedium,
@@ -106,9 +109,17 @@ fun GroupTitle(title: String, modifier: Modifier = Modifier, trailing: @Composab
     }
 }
 
+/** A frosted glass panel on the field: translucent, 1px bright edge, soft shadow. */
 @Composable
 fun Card(content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = AppShapes.Card, color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+    val dark = LocalAppIsDark.current
+    Surface(
+        shape = AppShapes.Card,
+        color = if (dark) com.suanran.shushu.ui.theme.GlassDark else com.suanran.shushu.ui.theme.GlassLight,
+        border = BorderStroke(1.dp, if (dark) com.suanran.shushu.ui.theme.GlassBorderDark else com.suanran.shushu.ui.theme.GlassBorderLight),
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(Modifier.padding(vertical = 4.dp), content = content)
     }
 }
@@ -263,14 +274,14 @@ fun SubScreen(title: String, onBack: (() -> Unit)?, bottomBar: @Composable () ->
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = Color.Transparent,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         bottomBar = bottomBar,
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         content = content
     )
 }
@@ -357,7 +368,7 @@ fun formatBytes(bytes: Long): String = android.text.format.Formatter.formatShort
 @Composable
 fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val dark = LocalAppIsDark.current
-    val thumb = if (dark) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceBright
+    val thumb = MaterialTheme.colorScheme.primaryContainer
     Box(modifier.clip(SegmentTrack).background(Ink.track).padding(3.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val width = maxWidth / options.size.coerceAtLeast(1)
@@ -371,7 +382,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
             Row(Modifier.fillMaxWidth().height(SEGMENT_HEIGHT)) {
                 options.forEachIndexed { index, label ->
                     val chosen = index == selected
-                    val color by animateColorAsState(if (chosen) Ink.primary else Ink.secondary, label = "segmentLabel")
+                    val color by animateColorAsState(if (chosen) MaterialTheme.colorScheme.primary else Ink.secondary, label = "segmentLabel")
                     Box(
                         Modifier.weight(1f).fillMaxHeight().clip(SegmentThumb)
                             .selectable(selected = chosen, role = Role.Tab, interactionSource = null, indication = null) { onSelect(index) },

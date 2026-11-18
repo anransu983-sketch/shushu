@@ -189,9 +189,16 @@ fun AppsScreen(controller: MonitorController, labels: AppLabels, onOpenApp: (App
         // One card per group, each a few hundred rows at most; rows are items so long lists stay light.
         groups.forEach { (group, list) ->
             item(key = "title-$group") {
-                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    GroupTitle(stringResource(group.label) + " · " + formatCount(list.size.toLong()))
-                }
+                GroupTitle(
+                    stringResource(group.label) + " · " + formatCount(list.size.toLong()),
+                    Modifier.padding(top = 4.dp),
+                    hamster = when (group) {
+                        AppGroup.STORE -> HamsterKind.APPS
+                        AppGroup.SIDELOADED -> HamsterKind.UNINSTALL
+                        AppGroup.PREINSTALLED -> HamsterKind.SETTINGS
+                        AppGroup.COMPONENT -> HamsterKind.TIMELINE
+                    }
+                )
             }
             list.forEachIndexed { index, (app, name) ->
                 item(key = "app-${app.pkg}") {

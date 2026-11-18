@@ -19,73 +19,72 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Dark scheme: near-black canvas, near-white primary actions, blue for function accents.
+// Dark scheme: night purple field, warm orange primary, lavender secondary.
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkInk,            // Primary buttons and Material fills: near white in the dark, dark text on them
-    onPrimary = DarkCanvas,
-    primaryContainer = Neutral800,
-    onPrimaryContainer = Neutral50,
-    secondary = Neutral400,
-    onSecondary = Neutral900,
-    secondaryContainer = Neutral800,
-    onSecondaryContainer = Neutral300,
-    tertiary = Neutral400,        // Neutral: no colored accent
+    primary = ShushuOrange,       // Primary buttons and emphasis: warm orange
+    onPrimary = ShushuOrangeOnDark,
+    primaryContainer = ShushuOrangeContainerDark,
+    onPrimaryContainer = Color(0xFFFFD9B0),
+    secondary = ShushuLavender,
+    onSecondary = Neutral0,
+    secondaryContainer = Color(0xFF3D3460),
+    onSecondaryContainer = Color(0xFFDCD5F2),
+    tertiary = ShushuLavender,
     onTertiary = Neutral0,
-    tertiaryContainer = Neutral800,
-    onTertiaryContainer = Neutral50,
-    background = DarkCanvas,
-    surface = DarkCard,
-    surfaceVariant = DarkContainerHigh,
-    surfaceDim = DarkCanvas,
-    surfaceBright = DarkContainerHigh,
-    surfaceContainerLowest = DarkCanvas,
-    surfaceContainerLow = DarkCard,
-    surfaceContainer = DarkCard,
-    surfaceContainerHigh = DarkContainerHigh,
-    surfaceContainerHighest = DarkContainerHighest,
+    tertiaryContainer = Color(0xFF3D3460),
+    onTertiaryContainer = Color(0xFFDCD5F2),
+    background = ShushuFieldDarkTop,
+    surface = Color(0xFF2E2440),
+    surfaceVariant = Color(0xFF3A2F52),
+    surfaceDim = ShushuFieldDarkTop,
+    surfaceBright = Color(0xFF3A2F52),
+    surfaceContainerLowest = ShushuFieldDarkTop,
+    surfaceContainerLow = Color(0xFF2E2440),
+    surfaceContainer = Color(0xFF2E2440),
+    surfaceContainerHigh = Color(0xFF3A2F52),
+    surfaceContainerHighest = Color(0xFF463A63),
     surfaceTint = Color.Transparent,
-    onBackground = DarkInk,
-    onSurface = DarkInk,
-    onSurfaceVariant = DarkInkSecondary,
-    outline = DarkContainerHighest,
-    outlineVariant = DarkSeparator,
+    onBackground = ShushuInkDark,
+    onSurface = ShushuInkDark,
+    onSurfaceVariant = ShushuInkDarkSecondary,
+    outline = Color(0xFF4A3D63),
+    outlineVariant = Color(0xFF3A2F52),
     error = StatusError,
     onError = Neutral0,
     errorContainer = StatusErrorContainerDark,
     onErrorContainer = StatusOnErrorContainerDark,
 )
 
-// Light scheme: a quiet light canvas, graphite primary actions, blue for function accents.
+// Light scheme: morning field, warm orange primary, lavender secondary.
 private val LightColorScheme = lightColorScheme(
-    primary = LightInk,           // Primary buttons and emphasis: graphite
+    primary = ShushuOrange,       // Primary buttons and emphasis: warm orange
     onPrimary = Neutral0,
-    primaryContainer = Neutral200,
-    onPrimaryContainer = Neutral900,
-    secondary = Neutral600,
+    primaryContainer = ShushuOrangeContainerLight,
+    onPrimaryContainer = Color(0xFF5A2E0E),
+    secondary = ShushuLavender,
     onSecondary = Neutral0,
-    secondaryContainer = Neutral100,
-    onSecondaryContainer = Neutral700,
-    tertiary = Neutral400,        // Neutral: no colored accent
+    secondaryContainer = ShushuLavenderContainerLight,
+    onSecondaryContainer = Color(0xFF3D3460),
+    tertiary = ShushuLavender,
     onTertiary = Neutral0,
-    tertiaryContainer = Neutral200,
-    onTertiaryContainer = Neutral900,
-    // Canvas < card < overlay, each a small step lighter.
-    background = LightCanvas,
-    surface = LightCard,
-    surfaceVariant = LightContainerHigh,
-    surfaceDim = LightContainerHigh,
+    tertiaryContainer = ShushuLavenderContainerLight,
+    onTertiaryContainer = Color(0xFF3D3460),
+    background = ShushuFieldLightTop,
+    surface = Color(0xFFFFFDF8),
+    surfaceVariant = Color(0xFFF3EADF),
+    surfaceDim = Color(0xFFF3EADF),
     surfaceBright = LightFloating,
     surfaceContainerLowest = LightFloating,
-    surfaceContainerLow = LightContainerLow,
-    surfaceContainer = LightContainer,
-    surfaceContainerHigh = LightContainerHigh,
-    surfaceContainerHighest = LightContainerHighest,
+    surfaceContainerLow = Color(0xFFFFF8EF),
+    surfaceContainer = Color(0xFFF7EFE6),
+    surfaceContainerHigh = Color(0xFFF3EADF),
+    surfaceContainerHighest = Color(0xFFEDE2D3),
     surfaceTint = Color.Transparent,
-    onBackground = LightInk,
-    onSurface = LightInk,
-    onSurfaceVariant = LightInkSecondary,
-    outline = LightContainerHighest,
-    outlineVariant = LightContainerHigh,
+    onBackground = ShushuInkLight,
+    onSurface = ShushuInkLight,
+    onSurfaceVariant = ShushuInkLightSecondary,
+    outline = Color(0xFFE8DDD2),
+    outlineVariant = Color(0xFFF0E7DB),
     error = StatusError,
     onError = Neutral0,
 )
@@ -124,7 +123,14 @@ fun JiumiTheme(content: @Composable () -> Unit) {
             colorScheme = colorScheme,
             typography = remember(isDark) { jiumiTypography(isDark) },
             shapes = JiumiShapes,
-            content = content
-        )
+        ) {
+            // The field sits behind every page; pages keep transparent backgrounds.
+            androidx.compose.foundation.layout.Box(
+                androidx.compose.ui.Modifier.fillMaxSize()
+            ) {
+                com.suanran.shushu.ui.FieldBackground()
+                content()
+            }
+        }
     }
 }

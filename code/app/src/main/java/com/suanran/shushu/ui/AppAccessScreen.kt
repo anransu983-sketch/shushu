@@ -3,7 +3,6 @@
 
 package com.suanran.shushu.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -119,7 +118,7 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
     val networkFailed = network && state?.optBoolean("failed") == true
 
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState()).padding(bottom = 32.dp)
     ) {

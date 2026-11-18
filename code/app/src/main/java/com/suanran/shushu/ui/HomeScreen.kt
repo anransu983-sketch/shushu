@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
@@ -93,6 +94,7 @@ import com.suanran.shushu.ui.theme.AppShapes
 import com.suanran.shushu.ui.theme.StatusWarning
 import com.suanran.shushu.ui.theme.StatusSuccess
 import com.suanran.shushu.ui.theme.Ink
+import com.suanran.shushu.ui.theme.LocalAppIsDark
 
 @Composable
 fun HomeScreen(
@@ -126,7 +128,7 @@ fun HomeScreen(
     LoadMoreOnScroll(list, more = view == HomeView.TIMELINE.name && layout.more) { shown += LOG_PAGE }
 
     val scrolled by remember { androidx.compose.runtime.derivedStateOf { list.canScrollBackward } }
-    HidingTopBar(stringResource(R.string.tab_monitor), scrolled) { top ->
+    HidingTopBar(stringResource(R.string.home_title), scrolled) { top ->
     Box(Modifier.fillMaxSize()) {
     LazyColumn(
         state = list,
@@ -165,7 +167,7 @@ fun HomeScreen(
             return@LazyColumn
         }
 
-        item { GroupTitle(stringResource(R.string.attention_title), Modifier.padding(top = 28.dp)) }
+        item { GroupTitle(stringResource(R.string.attention_title), Modifier.padding(top = 28.dp), hamster = HamsterKind.ATTENTION) }
         item { AttentionCard(ledger.attention, onOpenAttention) }
 
         item {
@@ -293,14 +295,21 @@ private fun MonitorCapsule(
     clock: String? = null,
     corner: (@Composable () -> Unit)? = null,
     message: String? = null,
-    detail: (@Composable ColumnScope.() -> Unit)? = null
+    detail: (@Composable ColumnScope.() -> Unit)? = null,
+    hamster: HamsterKind = HamsterKind.MONITOR,
 ) {
+    val dark = LocalAppIsDark.current
     Surface(
-        shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface,
+        shape = AppShapes.Card,
+        color = if (dark) com.suanran.shushu.ui.theme.GlassDark else com.suanran.shushu.ui.theme.GlassLight,
+        border = BorderStroke(1.dp, if (dark) com.suanran.shushu.ui.theme.GlassBorderDark else com.suanran.shushu.ui.theme.GlassBorderLight),
+        shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth().animateContentSize()
     ) {
         Column(Modifier.padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = if (detail != null || message != null) 14.dp else 8.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+                HamsterIcon(hamster, 32.dp)
+                Spacer(Modifier.width(8.dp))
                 StatusDot(tone, live)
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = MaterialTheme.typography.titleMedium,
@@ -453,6 +462,7 @@ private fun SessionStrip(state: MonitorController.UiState, controller: MonitorCo
 private fun InterruptedCard(state: MonitorController.UiState, session: MonitorController.SessionView, controller: MonitorController) {
     MonitorCapsule(
         tone = StatusWarning, live = false,
+        hamster = HamsterKind.ATTENTION,
         title = stringResource(R.string.monitoring_interrupted),
         corner = {
             CornerButton(stringResource(R.string.action_resume_short),
@@ -526,8 +536,12 @@ private fun AttentionCard(items: List<Attention>, onOpen: (String) -> Unit) {
     val raised = items.filter { it.apps.isNotEmpty() }
     Card {
         if (raised.isEmpty()) {
-            Text(stringResource(R.string.attention_none), style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+            Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                HamsterIcon(HamsterKind.ATTENTION, 48.dp)
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.attention_none), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             return@Card
         }
         raised.forEachIndexed { index, item ->
@@ -535,11 +549,19 @@ private fun AttentionCard(items: List<Attention>, onOpen: (String) -> Unit) {
             ListRow(
                 title = attentionName(item.id),
                 subtitle = pluralStringResource(R.plurals.apps_count, item.apps.size, formatCount(item.apps.size.toLong())),
-                leading = { IconTile(attentionIcon(item.id)) },
+                leading = { HamsterIcon(attentionHamster(item.id), 28.dp) },
                 onClick = { onOpen(item.id) }
             ) { Chevron() }
         }
     }
+}
+
+fun attentionHamster(id: String): HamsterKind = when (id) {
+    AttentionRules.SENT_IN_BACKGROUND -> HamsterKind.NETWORK
+    AttentionRules.BACKGROUND -> HamsterKind.TIMELINE
+    AttentionRules.FREQUENT -> HamsterKind.MONITOR
+    AttentionRules.FREQUENT_DENIED -> HamsterKind.ATTENTION
+    else -> HamsterKind.MONITOR
 }
 
 fun attentionIcon(id: String): ImageVector = when (id) {

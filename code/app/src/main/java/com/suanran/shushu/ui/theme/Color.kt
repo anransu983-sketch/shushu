@@ -67,6 +67,27 @@ val LightInk = Color(0xFF1D1D1F)
 val LightInkSecondary = Color(0xFF6E6E73)
 val JiumiLightBackground = LightCanvas
 
+// ── Shushu palette (Lin-style) ──────────────────────────────────────
+// Warm orange leads, lavender seconds; the field behind every page is morning light
+// over lavender hills by day, night purple with warm lamplight after dark.
+val ShushuOrange = Color(0xFFE8833A)
+val ShushuOrangeContainerLight = Color(0xFFFBE3CE)
+val ShushuOrangeContainerDark = Color(0xFF4A3226)
+val ShushuOrangeOnDark = Color(0xFF2B1608)
+val ShushuLavender = Color(0xFF8B7BC7)
+val ShushuLavenderContainerLight = Color(0xFFE7E2F7)
+val ShushuFieldLightTop = Color(0xFFFFF6EC)
+val ShushuFieldDarkTop = Color(0xFF241A33)
+val ShushuInkLight = Color(0xFF2B2118)
+val ShushuInkLightSecondary = Color(0xFF7A6A5E)
+val ShushuInkDark = Color(0xFFF5EFE8)
+val ShushuInkDarkSecondary = Color(0xFFB8A99A)
+// Glass panels: translucent white / dark plum with a 1px bright edge, per the UI scheme.
+val GlassLight = Color(0x94FFFFFF)
+val GlassDark = Color(0x8C1C1828)
+val GlassBorderLight = Color(0xA6FFFFFF)
+val GlassBorderDark = Color(0x2EFFFFFF)
+
 // Dark theme
 // A pure black canvas (blends with the bezel on OLED); cards and overlays step lighter as on iOS.
 val DarkCanvas = Color(0xFF000000)

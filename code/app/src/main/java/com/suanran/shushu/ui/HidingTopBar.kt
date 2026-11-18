@@ -5,7 +5,6 @@ package com.suanran.shushu.ui
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -83,14 +82,14 @@ fun HidingTopBar(
     }
     val topDp = with(density) { height.toDp() }
     Box(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        // Transparent: the page title sits on the field behind it.
+        Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.statusBars).clipToBounds().nestedScroll(connection)
     ) {
         content(topDp)
         Column(
             Modifier.fillMaxWidth().onSizeChanged { height = it.height }
                 .graphicsLayer { translationY = offset }
-                .background(MaterialTheme.colorScheme.background)
         ) {
             Box(Modifier.fillMaxWidth().height(BAR_TITLE_HEIGHT).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterStart) {
                 Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground)

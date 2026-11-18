@@ -84,8 +84,8 @@ fun SettingsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top, bottom = 32.dp + LocalTabBarInset.current)
         ) {
             // Every row is a title alone, in one size; what a setting means is said beneath its card.
-            // The environment comes first: the monitor can only be started once it is paired.
-            item { GroupTitle(stringResource(R.string.section_environment)) }
+            // Access comes first: the monitor can only be started once it is paired.
+            item { GroupTitle(stringResource(R.string.section_access), hamster = HamsterKind.NETWORK) }
             item {
                 // The three ways to start the monitor; what each needs follows beneath.
                 Segmented(
@@ -162,7 +162,7 @@ fun SettingsScreen(
                 GroupFooter(stringResource(if (needsUsb) R.string.settings_adb_persistence_usb_required else R.string.settings_adb_persistence_desc),
                     warning = needsUsb)
             }
-            item { GroupTitle(stringResource(R.string.section_monitoring), Modifier.padding(top = 24.dp)) }
+            item { GroupTitle(stringResource(R.string.section_monitoring), Modifier.padding(top = 24.dp), hamster = HamsterKind.MONITOR) }
             item {
                 Card {
                     // Where the monitor stands, as the Monitor tab shows it at the same moment; tapped,
@@ -186,23 +186,23 @@ fun SettingsScreen(
                         TrailingValue(spoolLabel(state.spoolLimitMb))
                         Chevron()
                     }
-                }
-                if (state.problem != null && !state.running && state.busy == null) statusMessage(state)?.let { GroupFooter(it, warning = true) }
-            }
-            item { GroupTitle(stringResource(R.string.section_data), Modifier.padding(top = 24.dp)) }
-            item {
-                Card {
+                    InsetDivider()
                     ListRow(stringResource(R.string.settings_sessions), leading = { IconTile(JiumiIcons.History) }, onClick = onOpenSessions) {
                         Chevron()
                     }
-                    InsetDivider()
+                }
+                if (state.problem != null && !state.running && state.busy == null) statusMessage(state)?.let { GroupFooter(it, warning = true) }
+            }
+            item { GroupTitle(stringResource(R.string.section_data), Modifier.padding(top = 24.dp), hamster = HamsterKind.EXPORT) }
+            item {
+                Card {
                     ListRow(stringResource(R.string.settings_export), leading = { IconTile(JiumiIcons.Download) }, onClick = onOpenExport) {
                         Chevron()
                     }
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
-            item { GroupTitle(stringResource(R.string.section_advanced)) }
+            item { GroupTitle(stringResource(R.string.section_manage), hamster = HamsterKind.PERMISSION) }
             item {
                 // Turning it on is a deliberate step: it asks, with what it means, before it takes effect.
                 var askAllowRemove by remember { mutableStateOf(false) }
@@ -252,7 +252,7 @@ fun SettingsScreen(
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
-            item { GroupTitle(stringResource(R.string.section_appearance)) }
+            item { GroupTitle(stringResource(R.string.section_appearance_about), hamster = HamsterKind.SETTINGS) }
             item {
                 Card {
                     ListRow(stringResource(R.string.settings_theme), leading = { IconTile(JiumiIcons.Palette) }, onClick = onOpenTheme) {

@@ -36,6 +36,10 @@
     <string name="section_network">连接网络</string>
     <string name="connected_to">连接 %1$s</string>
     <string name="section_environment">环境</string>
+    <string name="section_access">接入</string>
+    <string name="section_manage">管理</string>
+    <string name="section_appearance_about">外观与关于</string>
+    <string name="home_title">薯薯在看着</string>
     <string name="section_monitoring">监测</string>
     <string name="action_stop">停止</string>
     <string name="settings_title">设置</string>

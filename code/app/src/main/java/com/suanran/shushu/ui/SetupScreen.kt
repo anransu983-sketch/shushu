@@ -76,7 +76,10 @@ import com.suanran.shushu.adb.AirModePairingManager.PairingTrustState
 import com.suanran.shushu.adb.messageRes
 import com.suanran.shushu.ui.icons.JiumiIcons
 import com.suanran.shushu.ui.theme.AppShapes
+import com.suanran.shushu.ui.theme.GlassDark
+import com.suanran.shushu.ui.theme.GlassLight
 import com.suanran.shushu.ui.theme.Ink
+import com.suanran.shushu.ui.theme.LocalAppIsDark
 import com.suanran.shushu.ui.theme.StatusWarning
 
 /**
@@ -168,7 +171,7 @@ fun SetupScreen(
     SubScreen(
         "", onBack = null,
         bottomBar = {
-            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+            Column(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(JiumiIcons.Lock, null, tint = Ink.tertiary, modifier = Modifier.size(12.dp))
@@ -285,10 +288,10 @@ private fun Brand() {
 /** One way to start the monitor: what it is called and, in a line, what it needs. The chosen one is outlined. */
 @Composable
 private fun MethodCard(method: com.suanran.shushu.access.AccessMethod, selected: Boolean, onSelect: () -> Unit) {
-    val icon = when (method) {
-        com.suanran.shushu.access.AccessMethod.WIRELESS -> JiumiIcons.Wifi
-        com.suanran.shushu.access.AccessMethod.ROOT -> JiumiIcons.Shield
-        com.suanran.shushu.access.AccessMethod.SHIZUKU -> JiumiIcons.Smartphone
+    val hamster = when (method) {
+        com.suanran.shushu.access.AccessMethod.WIRELESS -> HamsterKind.NETWORK
+        com.suanran.shushu.access.AccessMethod.ROOT -> HamsterKind.PERMISSION
+        com.suanran.shushu.access.AccessMethod.SHIZUKU -> HamsterKind.SETTINGS
     }
     val hint = when (method) {
         com.suanran.shushu.access.AccessMethod.WIRELESS -> R.string.access_wireless_hint
@@ -296,17 +299,17 @@ private fun MethodCard(method: com.suanran.shushu.access.AccessMethod, selected:
         com.suanran.shushu.access.AccessMethod.SHIZUKU -> R.string.access_shizuku_hint
     }
     val edge by animateColorAsState(if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent, label = "methodEdge")
+    val dark = LocalAppIsDark.current
     Surface(
         shape = AppShapes.Card,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (dark) GlassDark else GlassLight,
         border = BorderStroke(1.5.dp, edge),
+        shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth().clip(AppShapes.Card)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
     ) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(36.dp).background(Ink.fill, AppShapes.Control), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Ink.primary, modifier = Modifier.size(20.dp))
-            }
+            HamsterIcon(hamster, 36.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

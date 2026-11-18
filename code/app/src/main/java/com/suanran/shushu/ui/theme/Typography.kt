@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 fun jiumiTypography(isDark: Boolean): Typography {
     val medium = FontWeight(if (isDark) 480 else 500)
     val semibold = FontWeight(if (isDark) 580 else 600)
-    val page = TextStyle(fontWeight = semibold, fontSize = 20.sp, lineHeight = 26.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading)
+    val page = TextStyle(fontWeight = semibold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading)
     val large = TextStyle(fontWeight = semibold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading)
     val title = TextStyle(fontWeight = semibold, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.sp)
     val body = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.sp)

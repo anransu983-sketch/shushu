@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 /** Corner radius scale. Pills use CircleShape; sub-8dp radii are reserved for chart and inline marks. */
 internal object AppShapes {
     /** A card's corner, for cards built from list rows that round only their ends. */
-    val CardRadius = 16.dp
+    val CardRadius = 20.dp
     /** Thumbnails, icon tiles and other small media. */
     val Small = RoundedCornerShape(8.dp)
     /** Buttons, text fields, chips and surfaces nested inside cards. */

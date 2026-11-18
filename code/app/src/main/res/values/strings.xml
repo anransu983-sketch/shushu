@@ -36,6 +36,10 @@
     <string name="section_network">Connect to the network</string>
     <string name="connected_to">Connected to %1$s</string>
     <string name="section_environment">Environment</string>
+    <string name="section_access">Access</string>
+    <string name="section_manage">Manage</string>
+    <string name="section_appearance_about">Appearance &amp; about</string>
+    <string name="home_title">Shushu is watching</string>
     <string name="section_monitoring">Monitoring</string>
     <string name="action_stop">Stop</string>
     <string name="settings_title">Settings</string>
