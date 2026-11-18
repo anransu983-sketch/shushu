@@ -5,6 +5,8 @@ package com.suanran.shushu.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +17,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -125,9 +128,7 @@ fun JiumiTheme(content: @Composable () -> Unit) {
             shapes = JiumiShapes,
         ) {
             // The field sits behind every page; pages keep transparent backgrounds.
-            androidx.compose.foundation.layout.Box(
-                androidx.compose.ui.Modifier.fillMaxSize()
-            ) {
+            Box(Modifier.fillMaxSize()) {
                 com.suanran.shushu.ui.FieldBackground()
                 content()
             }

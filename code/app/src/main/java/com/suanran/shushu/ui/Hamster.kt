@@ -206,6 +206,10 @@ fun HamsterIcon(
     val accessory = remember(kind) { kind.accessory?.let { ACCESSORY_GRIDS[it] } }
     val fur = Color(kind.fur)
     val accent = Color(kind.accent)
+    // One cell is an 18th of the icon's width; computed here, because inside Canvas
+    // `size` would mean the DrawScope's size, not this icon's size.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val cell = with(density) { size.toPx() } / 18f
     Canvas(
         modifier
             .size(size)
@@ -214,8 +218,6 @@ fun HamsterIcon(
                 interactionSource = press, indication = null, onClick = onClick
             ) else Modifier)
     ) {
-        // DrawScope.size is the canvas in pixels; one cell is a 18th of its width.
-        val cell = size.width / 18f
         fun draw(grid: List<String>, offX: Int, offY: Int) {
             grid.forEachIndexed { y, row ->
                 row.forEachIndexed { x, ch ->
