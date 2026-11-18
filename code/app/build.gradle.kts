@@ -44,6 +44,18 @@ android {
         generateLocaleConfig = true
     }
 
+    // One debug key for every CI build, so each version installs over the last
+    // instead of demanding an uninstall. This is the standard debug key
+    // (android/androiddebugkey), not a release key: it signs debug builds only.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
