@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 ybblab
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- Downloaded updates, shared only with the system installer. -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

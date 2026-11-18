@@ -1,0 +1,74 @@
+{
+  "comment": "Items the overview raises, in display order. background: accesses or calls while the app was not in front of the user (foreground-service, background, cached or gone process states) or the screen was off; persistent system apps (flagged persistent, such as the status bar and the phone service) are the system itself and never count as not in use; refused accesses are left out. sent_in_background: conversations in which the app sent at least sentInBackgroundBytes while in the background or with the screen off, as measured; nothing is inferred about what was sent or why. frequent: accesses that went through (refused ones left out) plus calls, of one category within any 60 minutes, at least the category's threshold. frequent_denied: refused accesses of one category within any 60 minutes, at least the same threshold. Thresholds: frequentPerHourByCategory, else frequentPerHour. kinds limits each item to third_party, preinstalled, system_app (apps running under a system identity, such as Settings, Phone and maker components) and/or system (the platform itself, native daemons and hardware services, and the adb shell). routineKinds: callers whose records are routine system work; they are listed but never raised, and their records are not judged as unattended. onBehalfAttributions: attribution tags under which a provider notes an access it makes for another app (a location provider fetching a fix for its client, whose own access is recorded as well); such records are left out, as are AppOps proxy notes. locationProviderCategories: records in these categories by an app the system has bound as a location provider (read from its location dump) are work it does to locate whichever app asked, whose own access is noted as well; they are left out. Its records in other categories are its own.",
+  "frequentPerHour": 60,
+  "sentInBackgroundBytes": 4096,
+  "frequentPerHourByCategory": {
+    "clipboard_read": 10,
+    "device_id": 10,
+    "subscriber_id": 10,
+    "phone_number": 10,
+    "serial_number": 10,
+    "mac_address": 10,
+    "contacts_read": 20,
+    "contacts_store_read": 20,
+    "accounts": 20,
+    "sms_read": 20,
+    "telephony_store_read": 20,
+    "call_log_read": 20,
+    "calendar_read": 20,
+    "installed_apps": 20
+  },
+  "items": [
+    {
+      "id": "sent_in_background",
+      "kinds": [
+        "third_party",
+        "preinstalled",
+        "system_app"
+      ]
+    },
+    {
+      "id": "background",
+      "kinds": [
+        "third_party",
+        "preinstalled",
+        "system_app"
+      ]
+    },
+    {
+      "id": "frequent",
+      "kinds": [
+        "third_party",
+        "preinstalled",
+        "system_app"
+      ]
+    },
+    {
+      "id": "frequent_denied",
+      "kinds": [
+        "third_party",
+        "preinstalled",
+        "system_app"
+      ]
+    }
+  ],
+  "routineKinds": [
+    "system"
+  ],
+  "locationProviderCategories": [
+    "location_precise",
+    "location_coarse",
+    "location_continuous",
+    "location_request",
+    "cell_info",
+    "wifi_info",
+    "bluetooth",
+    "gnss_raw"
+  ],
+  "onBehalfAttributions": [
+    "fused_location_provider",
+    "network_location_provider",
+    "OlsProxy",
+    "location_nlp_network"
+  ]
+}

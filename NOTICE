@@ -1,0 +1,53 @@
+Shushu (com.suanran.shushu)
+Copyright 2026 suanran
+
+Shushu is a modified version of Jiumi v0.2.3 (https://github.com/ybblab/Jiumi, commit fb607bd),
+Copyright 2026 ybblab, licensed under the Apache License 2.0. It is not an official ybblab release.
+Changes: package, names and branding; the domain-recording feature (dns/) was removed; the
+user interface is being replaced. Original notices follow.
+
+------------------------------------------------------------------------
+
+Jiumi
+Copyright 2026 ybblab
+
+This product includes software developed by ybblab.
+
+========================================================================
+Third-Party Software Attributions
+========================================================================
+
+1. Shizuku (moe.shizuku.manager.adb / libadb.so)
+   - JNI source: https://github.com/RikkaApps/Shizuku/tree/2650830c5b099ae0dd34fedf614d4f592ca05d65
+   - JNI license: Apache License 2.0; used for wireless ADB pairing.
+   - Statically linked BoringSSL source: https://github.com/google/boringssl/tree/571a7432a19592c620fa316abde47770dad4f82b
+   - BoringSSL retains its OpenSSL, original SSLeay, ISC and fiat-crypto MIT terms.
+     This product includes software developed by the OpenSSL Project for use in
+     the OpenSSL Toolkit (https://www.openssl.org/), and cryptographic software
+     written by Eric Young (eay@cryptsoft.com).
+   - Complete upstream licenses and notices are bundled under assets/licenses/libadb/.
+   - The source/build recipe and binary identities are recorded in
+     third_party/libadb/source.lock.json and third_party/libadb/provenance.json.
+
+2. Android Open Source Project (AOSP) & AndroidX Libraries
+   - Copyright (C) The Android Open Source Project
+   - License: Apache License 2.0
+
+3. Kotlin & Kotlinx Coroutines
+   - Copyright JetBrains s.r.o. and Kotlin Programming Language contributors.
+   - License: Apache License 2.0
+
+4. Shizuku API (dev.rikka.shizuku:api and :provider 13.1.5)
+   - Source: https://github.com/RikkaApps/Shizuku-API
+   - Copyright RikkaApps
+   - License: Apache License 2.0; used to start the monitor through Shizuku.
+
+5. Droidance (https://github.com/ybblab/Droidance)
+   - Copyright 2026 ybblab and Droidance contributors
+   - License: Apache License 2.0; the root and Shizuku connection code is adapted from it.
+
+6. Lucide (https://lucide.dev)
+   - Copyright (c) 2026 Lucide Icons and Contributors: ISC License.
+   - Icons derived from Feather: Copyright (c) 2013-present Cole Bemis, MIT License.
+   - The app's interface icons are drawn from Lucide paths; the full license text
+     is bundled as assets/licenses/lucide-LICENSE.txt.

@@ -1,0 +1,50 @@
+{
+  "comment": "Open-source work Jiumi is built on, as the About page lists it. files: license texts bundled under assets/, shown in full when the entry is opened; url: the project, opened when there are no files. The app's own source and license links come from the jiumiRepository build property.",
+  "entries": [
+    {
+      "name": "Shizuku",
+      "license": "Apache-2.0",
+      "url": "https://github.com/RikkaApps/Shizuku",
+      "files": [
+        "licenses/libadb/Shizuku-LICENSE.txt",
+        "licenses/libadb/NOTICE.txt"
+      ]
+    },
+    {
+      "name": "BoringSSL",
+      "license": "OpenSSL, ISC, MIT",
+      "url": "https://boringssl.googlesource.com/boringssl",
+      "files": [
+        "licenses/libadb/BoringSSL-LICENSE.txt",
+        "licenses/libadb/BoringSSL-source-notices.txt",
+        "licenses/libadb/Fiat-LICENSE.txt"
+      ]
+    },
+    {
+      "name": "Android NDK",
+      "license": "Apache-2.0",
+      "url": "https://developer.android.com/ndk",
+      "files": [
+        "licenses/libadb/NDK-NOTICE.txt"
+      ]
+    },
+    {
+      "name": "Lucide",
+      "license": "ISC, MIT",
+      "url": "https://lucide.dev",
+      "files": [
+        "licenses/lucide-LICENSE.txt"
+      ]
+    },
+    {
+      "name": "AndroidX, Jetpack Compose",
+      "license": "Apache-2.0",
+      "url": "https://developer.android.com/jetpack/androidx"
+    },
+    {
+      "name": "Kotlin, kotlinx.coroutines",
+      "license": "Apache-2.0",
+      "url": "https://github.com/Kotlin/kotlinx.coroutines"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: 2026 ybblab
+     SPDX-License-Identifier: Apache-2.0 -->
+<lint>
+    <!-- Names for the rules' ids are looked up by name at run time (ui/Strings.kt, data/LogExport.kt),
+         so lint cannot see them used. -->
+    <issue id="UnusedResources">
+        <ignore regexp="R\.string\.(cat|catd|group|op|reason|act|manage_done|store)_" />
+    </issue>
+    <!-- Wireless debugging's TLS: adbd's certificate is self-signed and checked by no authority; see
+         createSslContext in core/adb AirAdbKey.kt for why accepting it is right there. -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="**/core/adb/**" />
+        <ignore regexp="checkClientTrusted is empty|checkServerTrusted is empty" />
+    </issue>
+    <!-- AAPT only takes adaptive icons from a -v26 folder, minSdk notwithstanding. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

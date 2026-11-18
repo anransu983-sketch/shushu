@@ -1,0 +1,813 @@
+{
+  "comment": "Report taxonomy. groups: first-level kinds of personal information, in display order, each with the symbol the app shows and its second-level categories. categories: ops are AppOps operations the monitor watches; calls are system-service methods it traces, as Interface.method or Interface.* (AIDL short interface name), or content-provider operations as ContentProvider@<host process>.<operation>; recordedAs lists categories whose AppOps records count as the system having recorded such a call (default: the category itself). A traced call in a category the system records (one with ops, or with recordedAs) is shown only when the system recorded the caller reaching one of those categories around then, or as refused: without the record, what it returned cannot be told. providerOperations names the binder transaction codes of IContentProvider. Entries unknown to a given Android release, and provider hosts absent on a device, are skipped. callPermissions: for an installed app (uid 10000 and up), the permissions a traced call needs to return the data its category names, first matching entry wins (Interface.* matches any method). Without any of anyOf, the call is told as refused (without: refused; the system returned nothing) or left out (without: redacted; the system returned the data with what identifies the user taken out, such as the Wi-Fi name and address; without: own; the call then returns only the app's own information). System daemons and uids below 10000 are not judged. Where the platform lets several permissions through (the coarse permission for apps built for older releases, the network-stack permissions for Wi-Fi), all are listed: a call is told as refused only when none is held, so an app that may have got the data is never said to have been refused. opPermissions: AppOps operations the system notes as one way in among several (the SIM-authentication grant is asked before the privileged phone-state permission; the overlay grant beside the system's own window permission); an installed app holding any of anyOf is not told as refused, whatever the operation answered. checkedOps: operations the system also notes when it only checks an app's rights while serving something else (the overlay grant before letting an app start an activity or a foreground service from the background; usage access when an app queries its own traffic or usage; all-files access before falling back to the media permissions); a refusal noted for them says nothing about what the app asked for, so refusals of these are not shown, and the long-term counts of their refusals are left out. activeOnlyOps: operations whose use is only the time the system marks them active (an overlay window on screen); their plain notes are checks and are left out, as are their long-term counts. Refusals of a maker's own operations, whose meaning is not published, are left out of the counts as well. callConfirmedOps: operations the system notes whenever it checks an app's rights, including while the app reads only its own data (usage access is checked when an app queries its own traffic); a note says what the app may read, not what it read, so it counts as use only when a traced call of the same category from the same app falls within a minute of it.",
+  "providerOperations": {
+    "1": "query",
+    "3": "insert",
+    "4": "delete",
+    "10": "update",
+    "13": "bulk_insert",
+    "14": "open_file",
+    "15": "open_asset_file",
+    "20": "apply_batch",
+    "21": "call"
+  },
+  "groups": [
+    {
+      "id": "location",
+      "icon": "map_pin",
+      "categories": [
+        "location_precise",
+        "location_coarse",
+        "location_continuous",
+        "location_request",
+        "geofence",
+        "cell_info",
+        "wifi_info",
+        "bluetooth",
+        "gnss_raw",
+        "media_location"
+      ]
+    },
+    {
+      "id": "identity",
+      "icon": "smartphone",
+      "categories": [
+        "device_id",
+        "subscriber_id",
+        "phone_number",
+        "serial_number",
+        "mac_address",
+        "phone_state"
+      ]
+    },
+    {
+      "id": "contacts",
+      "icon": "person",
+      "categories": [
+        "contacts_read",
+        "contacts_write",
+        "contacts_store_read",
+        "contacts_store_write",
+        "accounts"
+      ]
+    },
+    {
+      "id": "communication",
+      "icon": "message",
+      "categories": [
+        "sms_read",
+        "sms_receive",
+        "sms_send",
+        "sms_write",
+        "telephony_store_read",
+        "telephony_store_write",
+        "call_log_read",
+        "call_log_write",
+        "phone_calls"
+      ]
+    },
+    {
+      "id": "calendar",
+      "icon": "calendar",
+      "categories": [
+        "calendar_read",
+        "calendar_write"
+      ]
+    },
+    {
+      "id": "capture",
+      "icon": "camera",
+      "categories": [
+        "camera",
+        "microphone",
+        "screen_capture",
+        "call_capture",
+        "audio_output_capture"
+      ]
+    },
+    {
+      "id": "storage",
+      "icon": "image",
+      "categories": [
+        "photos",
+        "videos",
+        "audio_files",
+        "media_selected",
+        "media_store_read",
+        "media_store_write",
+        "shared_storage",
+        "all_files"
+      ]
+    },
+    {
+      "id": "clipboard",
+      "icon": "clipboard",
+      "categories": [
+        "clipboard_read",
+        "clipboard_write"
+      ]
+    },
+    {
+      "id": "health",
+      "icon": "activity",
+      "categories": [
+        "body_sensors",
+        "activity_recognition"
+      ]
+    },
+    {
+      "id": "apps",
+      "icon": "layers",
+      "categories": [
+        "installed_apps",
+        "app_usage",
+        "running_apps"
+      ]
+    },
+    {
+      "id": "notifications",
+      "icon": "notifications",
+      "categories": [
+        "notification_access"
+      ]
+    },
+    {
+      "id": "control",
+      "icon": "eye",
+      "categories": [
+        "accessibility",
+        "vpn",
+        "overlay"
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "location_precise",
+      "ops": [
+        "android:fine_location"
+      ]
+    },
+    {
+      "id": "location_coarse",
+      "ops": [
+        "android:coarse_location"
+      ]
+    },
+    {
+      "id": "location_continuous",
+      "ops": [
+        "android:monitor_location",
+        "android:monitor_location_high_power"
+      ],
+      "calls": [
+        "ILocationManager.registerLocationListener",
+        "ILocationManager.registerLocationPendingIntent"
+      ],
+      "recordedAs": [
+        "location_continuous",
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "location_request",
+      "calls": [
+        "ILocationManager.getLastLocation",
+        "ILocationManager.getCurrentLocation"
+      ],
+      "recordedAs": [
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "geofence",
+      "calls": [
+        "ILocationManager.requestGeofence"
+      ],
+      "recordedAs": [
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "cell_info",
+      "calls": [
+        "ITelephony.getAllCellInfo",
+        "ITelephony.getCellLocation",
+        "ITelephony.requestCellInfoUpdate",
+        "ITelephony.requestCellInfoUpdateWithWorkSource"
+      ],
+      "recordedAs": [
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "wifi_info",
+      "ops": [
+        "android:wifi_scan",
+        "android:nearby_wifi_devices"
+      ],
+      "calls": [
+        "IWifiManager.getScanResults",
+        "IWifiManager.startScan",
+        "IWifiManager.getConnectionInfo"
+      ],
+      "recordedAs": [
+        "wifi_info",
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "bluetooth",
+      "ops": [
+        "android:bluetooth_scan",
+        "android:bluetooth_connect"
+      ],
+      "calls": [
+        "IBluetoothScan.startScan",
+        "IBluetoothGatt.startScan",
+        "IBluetooth.startDiscovery"
+      ],
+      "recordedAs": [
+        "bluetooth",
+        "location_precise",
+        "location_coarse"
+      ]
+    },
+    {
+      "id": "gnss_raw",
+      "calls": [
+        "ILocationManager.registerGnssStatusCallback",
+        "ILocationManager.registerGnssNmeaCallback",
+        "ILocationManager.addGnssMeasurementsListener"
+      ],
+      "recordedAs": [
+        "location_precise"
+      ]
+    },
+    {
+      "id": "media_location",
+      "ops": [
+        "android:access_media_location"
+      ]
+    },
+    {
+      "id": "device_id",
+      "ops": [
+        "android:read_device_identifiers"
+      ],
+      "calls": [
+        "ITelephony.getImeiForSlot",
+        "ITelephony.getMeidForSlot",
+        "ITelephony.getDeviceIdWithFeature",
+        "IPhoneSubInfo.getDeviceId",
+        "IPhoneSubInfo.getDeviceIdWithFeature",
+        "IPhoneSubInfo.getDeviceIdForPhone",
+        "IPhoneSubInfo.getImeiForSubscriber"
+      ],
+      "recordedAs": [
+        "device_id",
+        "phone_state"
+      ]
+    },
+    {
+      "id": "subscriber_id",
+      "ops": [
+        "android:use_icc_auth_with_device_identifier"
+      ],
+      "calls": [
+        "IPhoneSubInfo.getSubscriberId",
+        "IPhoneSubInfo.getSubscriberIdWithFeature",
+        "IPhoneSubInfo.getSubscriberIdForSubscriber",
+        "IPhoneSubInfo.getIccSerialNumber",
+        "IPhoneSubInfo.getIccSerialNumberWithFeature",
+        "IPhoneSubInfo.getIccSerialNumberForSubscriber",
+        "IPhoneSubInfo.getNaiForSubscriber",
+        "IPhoneSubInfo.getIsimImpi",
+        "IPhoneSubInfo.getImsPrivateUserIdentity",
+        "IPhoneSubInfo.getIsimImpu",
+        "IPhoneSubInfo.getImsPublicUserIdentities"
+      ],
+      "recordedAs": [
+        "device_id",
+        "phone_state"
+      ]
+    },
+    {
+      "id": "phone_number",
+      "ops": [
+        "android:read_phone_numbers"
+      ],
+      "calls": [
+        "ISub.getPhoneNumber",
+        "ISub.getPhoneNumberFromFirstAvailableSource",
+        "IPhoneSubInfo.getLine1NumberForSubscriber",
+        "IPhoneSubInfo.getLine1Number",
+        "IPhoneSubInfo.getMsisdn",
+        "IPhoneSubInfo.getMsisdnForSubscriber"
+      ],
+      "recordedAs": [
+        "phone_number",
+        "phone_state"
+      ]
+    },
+    {
+      "id": "serial_number",
+      "calls": [
+        "IDeviceIdentifiersPolicyService.getSerial",
+        "IDeviceIdentifiersPolicyService.getSerialForPackage"
+      ],
+      "recordedAs": [
+        "device_id",
+        "phone_state"
+      ]
+    },
+    {
+      "id": "mac_address",
+      "calls": [
+        "IWifiManager.getFactoryMacAddresses"
+      ],
+      "recordedAs": [
+        "device_id"
+      ]
+    },
+    {
+      "id": "phone_state",
+      "ops": [
+        "android:read_phone_state"
+      ]
+    },
+    {
+      "id": "contacts_read",
+      "ops": [
+        "android:read_contacts"
+      ]
+    },
+    {
+      "id": "contacts_write",
+      "ops": [
+        "android:write_contacts"
+      ]
+    },
+    {
+      "id": "contacts_store_read",
+      "calls": [
+        "ContentProvider@android.process.acore.query",
+        "ContentProvider@android.process.acore.call",
+        "ContentProvider@android.process.acore.open_file",
+        "ContentProvider@android.process.acore.open_asset_file"
+      ],
+      "recordedAs": [
+        "contacts_read",
+        "call_log_read"
+      ]
+    },
+    {
+      "id": "contacts_store_write",
+      "calls": [
+        "ContentProvider@android.process.acore.insert",
+        "ContentProvider@android.process.acore.update",
+        "ContentProvider@android.process.acore.delete",
+        "ContentProvider@android.process.acore.bulk_insert",
+        "ContentProvider@android.process.acore.apply_batch"
+      ],
+      "recordedAs": [
+        "contacts_write",
+        "call_log_write"
+      ]
+    },
+    {
+      "id": "accounts",
+      "ops": [
+        "android:get_accounts"
+      ],
+      "calls": [
+        "IAccountManager.getAccountsAsUser",
+        "IAccountManager.getAccountsByTypeForPackage",
+        "IAccountManager.getAccountsForPackage"
+      ]
+    },
+    {
+      "id": "sms_read",
+      "ops": [
+        "android:read_sms",
+        "android:read_icc_sms"
+      ]
+    },
+    {
+      "id": "sms_receive",
+      "ops": [
+        "android:receive_sms",
+        "android:receive_mms",
+        "android:receive_wap_push"
+      ]
+    },
+    {
+      "id": "sms_send",
+      "ops": [
+        "android:send_sms"
+      ]
+    },
+    {
+      "id": "sms_write",
+      "ops": [
+        "android:write_sms"
+      ]
+    },
+    {
+      "id": "telephony_store_read",
+      "calls": [
+        "ContentProvider@com.android.phone.query"
+      ],
+      "recordedAs": [
+        "sms_read"
+      ]
+    },
+    {
+      "id": "telephony_store_write",
+      "calls": [
+        "ContentProvider@com.android.phone.insert",
+        "ContentProvider@com.android.phone.update",
+        "ContentProvider@com.android.phone.delete",
+        "ContentProvider@com.android.phone.bulk_insert"
+      ],
+      "recordedAs": [
+        "sms_write"
+      ]
+    },
+    {
+      "id": "call_log_read",
+      "ops": [
+        "android:read_call_log"
+      ]
+    },
+    {
+      "id": "call_log_write",
+      "ops": [
+        "android:write_call_log"
+      ]
+    },
+    {
+      "id": "phone_calls",
+      "ops": [
+        "android:call_phone",
+        "android:process_outgoing_calls"
+      ]
+    },
+    {
+      "id": "calendar_read",
+      "ops": [
+        "android:read_calendar"
+      ],
+      "calls": [
+        "ContentProvider@com.android.providers.calendar.query"
+      ]
+    },
+    {
+      "id": "calendar_write",
+      "ops": [
+        "android:write_calendar"
+      ],
+      "calls": [
+        "ContentProvider@com.android.providers.calendar.insert",
+        "ContentProvider@com.android.providers.calendar.update",
+        "ContentProvider@com.android.providers.calendar.delete",
+        "ContentProvider@com.android.providers.calendar.bulk_insert",
+        "ContentProvider@com.android.providers.calendar.apply_batch"
+      ]
+    },
+    {
+      "id": "camera",
+      "ops": [
+        "android:camera"
+      ],
+      "calls": [
+        "ICameraService.connectDevice"
+      ]
+    },
+    {
+      "id": "microphone",
+      "ops": [
+        "android:record_audio"
+      ]
+    },
+    {
+      "id": "screen_capture",
+      "ops": [
+        "android:project_media"
+      ]
+    },
+    {
+      "id": "call_capture",
+      "ops": [
+        "android:phone_call_microphone",
+        "android:phone_call_camera"
+      ]
+    },
+    {
+      "id": "audio_output_capture",
+      "ops": [
+        "android:record_audio_output"
+      ]
+    },
+    {
+      "id": "photos",
+      "ops": [
+        "android:read_media_images"
+      ]
+    },
+    {
+      "id": "videos",
+      "ops": [
+        "android:read_media_video"
+      ]
+    },
+    {
+      "id": "audio_files",
+      "ops": [
+        "android:read_media_audio"
+      ]
+    },
+    {
+      "id": "media_selected",
+      "ops": [
+        "android:read_media_visual_user_selected"
+      ]
+    },
+    {
+      "id": "media_store_read",
+      "calls": [
+        "ContentProvider@com.android.providers.media.module.query",
+        "ContentProvider@com.android.providers.media.module.open_file",
+        "ContentProvider@com.android.providers.media.module.open_asset_file"
+      ],
+      "recordedAs": [
+        "photos",
+        "videos",
+        "audio_files",
+        "media_selected",
+        "shared_storage",
+        "all_files"
+      ]
+    },
+    {
+      "id": "media_store_write",
+      "calls": [
+        "ContentProvider@com.android.providers.media.module.insert",
+        "ContentProvider@com.android.providers.media.module.update",
+        "ContentProvider@com.android.providers.media.module.delete",
+        "ContentProvider@com.android.providers.media.module.bulk_insert",
+        "ContentProvider@com.android.providers.media.module.apply_batch"
+      ],
+      "recordedAs": [
+        "shared_storage",
+        "all_files"
+      ]
+    },
+    {
+      "id": "shared_storage",
+      "ops": [
+        "android:read_external_storage",
+        "android:write_external_storage"
+      ]
+    },
+    {
+      "id": "all_files",
+      "ops": [
+        "android:manage_external_storage"
+      ]
+    },
+    {
+      "id": "clipboard_read",
+      "ops": [
+        "android:read_clipboard"
+      ],
+      "calls": [
+        "IClipboard.getPrimaryClip"
+      ]
+    },
+    {
+      "id": "clipboard_write",
+      "ops": [
+        "android:write_clipboard"
+      ],
+      "calls": [
+        "IClipboard.setPrimaryClip"
+      ]
+    },
+    {
+      "id": "body_sensors",
+      "ops": [
+        "android:body_sensors"
+      ]
+    },
+    {
+      "id": "activity_recognition",
+      "ops": [
+        "android:activity_recognition"
+      ]
+    },
+    {
+      "id": "installed_apps",
+      "calls": [
+        "IPackageManager.getInstalledPackages",
+        "IPackageManager.getInstalledApplications"
+      ]
+    },
+    {
+      "id": "app_usage",
+      "ops": [
+        "android:get_usage_stats"
+      ],
+      "calls": [
+        "IUsageStatsManager.queryEvents",
+        "IUsageStatsManager.queryUsageStats"
+      ]
+    },
+    {
+      "id": "running_apps",
+      "calls": [
+        "IActivityManager.getRunningAppProcesses"
+      ],
+      "recordedAs": []
+    },
+    {
+      "id": "notification_access",
+      "ops": [
+        "android:access_notifications"
+      ]
+    },
+    {
+      "id": "accessibility",
+      "ops": [
+        "android:access_accessibility"
+      ]
+    },
+    {
+      "id": "vpn",
+      "ops": [
+        "android:activate_vpn"
+      ]
+    },
+    {
+      "id": "overlay",
+      "ops": [
+        "android:system_alert_window"
+      ]
+    }
+  ],
+  "checkedOps": [
+    "android:system_alert_window",
+    "android:get_usage_stats",
+    "android:manage_external_storage"
+  ],
+  "activeOnlyOps": [
+    "android:system_alert_window"
+  ],
+  "opPermissions": [
+    {
+      "ops": [
+        "android:use_icc_auth_with_device_identifier"
+      ],
+      "anyOf": [
+        "android.permission.USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER",
+        "android.permission.READ_PRIVILEGED_PHONE_STATE"
+      ]
+    },
+    {
+      "ops": [
+        "android:system_alert_window"
+      ],
+      "anyOf": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.INTERNAL_SYSTEM_WINDOW"
+      ]
+    }
+  ],
+  "callPermissions": [
+    {
+      "calls": [
+        "IActivityManager.getRunningAppProcesses"
+      ],
+      "anyOf": [
+        "android.permission.REAL_GET_TASKS"
+      ],
+      "without": "own"
+    },
+    {
+      "calls": [
+        "IWifiManager.getConnectionInfo"
+      ],
+      "anyOf": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.NETWORK_SETTINGS",
+        "android.permission.NETWORK_SETUP_WIZARD",
+        "android.permission.NETWORK_MANAGED_PROVISIONING",
+        "android.permission.NETWORK_STACK",
+        "android.permission.MAINLINE_NETWORK_STACK",
+        "android.permission.RADIO_SCAN_WITHOUT_LOCATION"
+      ],
+      "without": "redacted"
+    },
+    {
+      "calls": [
+        "IWifiManager.getScanResults"
+      ],
+      "anyOf": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.NETWORK_SETTINGS",
+        "android.permission.NETWORK_SETUP_WIZARD",
+        "android.permission.NETWORK_MANAGED_PROVISIONING",
+        "android.permission.NETWORK_STACK",
+        "android.permission.MAINLINE_NETWORK_STACK",
+        "android.permission.RADIO_SCAN_WITHOUT_LOCATION"
+      ],
+      "without": "refused"
+    },
+    {
+      "calls": [
+        "ITelephony.getAllCellInfo",
+        "ITelephony.requestCellInfoUpdate",
+        "ITelephony.requestCellInfoUpdateWithWorkSource"
+      ],
+      "anyOf": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "without": "refused"
+    },
+    {
+      "calls": [
+        "ITelephony.getCellLocation"
+      ],
+      "anyOf": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "without": "refused"
+    },
+    {
+      "calls": [
+        "ISub.getPhoneNumber",
+        "ISub.getPhoneNumberFromFirstAvailableSource",
+        "IPhoneSubInfo.getLine1NumberForSubscriber",
+        "IPhoneSubInfo.getLine1Number",
+        "IPhoneSubInfo.getMsisdn",
+        "IPhoneSubInfo.getMsisdnForSubscriber"
+      ],
+      "anyOf": [
+        "android.permission.READ_PHONE_NUMBERS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_SMS",
+        "android.permission.READ_PRIVILEGED_PHONE_STATE"
+      ],
+      "without": "refused"
+    },
+    {
+      "calls": [
+        "ITelephony.getImeiForSlot",
+        "ITelephony.getMeidForSlot",
+        "ITelephony.getDeviceIdWithFeature",
+        "IPhoneSubInfo.getSubscriberId",
+        "IPhoneSubInfo.getSubscriberIdWithFeature",
+        "IPhoneSubInfo.getSubscriberIdForSubscriber",
+        "IPhoneSubInfo.getIccSerialNumber",
+        "IPhoneSubInfo.getIccSerialNumberWithFeature",
+        "IPhoneSubInfo.getIccSerialNumberForSubscriber",
+        "IPhoneSubInfo.getNaiForSubscriber",
+        "IPhoneSubInfo.getIsimImpi",
+        "IPhoneSubInfo.getImsPrivateUserIdentity",
+        "IPhoneSubInfo.getIsimImpu",
+        "IPhoneSubInfo.getImsPublicUserIdentities",
+        "IPhoneSubInfo.getDeviceId",
+        "IPhoneSubInfo.getDeviceIdWithFeature",
+        "IPhoneSubInfo.getDeviceIdForPhone",
+        "IPhoneSubInfo.getImeiForSubscriber",
+        "IDeviceIdentifiersPolicyService.getSerial",
+        "IDeviceIdentifiersPolicyService.getSerialForPackage"
+      ],
+      "anyOf": [
+        "android.permission.READ_PRIVILEGED_PHONE_STATE"
+      ],
+      "without": "refused"
+    },
+    {
+      "calls": [
+        "IWifiManager.getFactoryMacAddresses"
+      ],
+      "anyOf": [
+        "android.permission.LOCAL_MAC_ADDRESS"
+      ],
+      "without": "refused"
+    }
+  ],
+  "callConfirmedOps": [
+    "android:get_usage_stats"
+  ]
+}
