@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -61,7 +62,9 @@ fun SummaryRow(summary: BehaviorSummary, icon: ImageVector, routine: Boolean, se
     val indent = AppIconSize.Leading + 10.dp
     Column(
         Modifier.fillMaxWidth().clickable(onClick = onClick)
-            .background(if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f) else MaterialTheme.colorScheme.surface)
+            // Transparent: the row sits inside a glass Card, whose frost shows through; a solid
+            // surface here would paint a white slab over it.
+            .background(if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f) else Color.Transparent)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -136,14 +139,21 @@ fun BehaviorChart(b: Buckets, routine: Boolean, modifier: Modifier = Modifier) {
                 if (flagged > 0) drawRoundRect(flaggedColor, Offset(x, size.height - flagged), Size(bar, flagged), r)
             }
         }
-        // Each label starts under its bar's slot, as a clock's hour marks do.
+        // Each label starts under its bar's slot, as a clock's hour marks do; the last slot's
+        // label is pinned to the chart's right edge instead, so a month's last date is not cut
+        // off by the card's edge.
         BoxWithConstraints(Modifier.fillMaxWidth().height(20.dp).padding(top = 6.dp)) {
             val slot = maxWidth / b.size
             labels.forEachIndexed { i, label ->
                 label ?: return@forEachIndexed
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1, softWrap = false,
-                    modifier = Modifier.offset(x = slot * i).wrapContentWidth(Alignment.Start, unbounded = true))
+                if (i == labels.lastIndex) {
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.TopEnd))
+                } else {
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, softWrap = false,
+                        modifier = Modifier.offset(x = slot * i).wrapContentWidth(Alignment.Start, unbounded = true))
+                }
             }
         }
     }

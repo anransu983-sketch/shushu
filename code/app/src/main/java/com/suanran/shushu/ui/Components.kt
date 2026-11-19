@@ -199,6 +199,7 @@ fun Chevron() {
 @Composable
 fun TrailingValue(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = color, maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.widthIn(max = 144.dp).padding(start = 8.dp))
 }
 
@@ -274,7 +275,8 @@ fun SubScreen(title: String, onBack: (() -> Unit)?, bottomBar: @Composable () ->
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
+                    // Opaque: scrolled rows pass under this bar, as under the tab pages' bar.
+                    containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
@@ -437,7 +439,9 @@ fun ViewTabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modi
             }
         }
         HorizontalDivider(Modifier.align(Alignment.BottomStart), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-        Box(
+        // Only once the words have been measured: before that the rule sits at (0, 0) and
+        // slides in from the row's edge on the first frame.
+        if (w > 0.dp) Box(
             Modifier.align(Alignment.BottomStart).padding(start = 4.dp).offset(x = x).width(w).height(1.5.dp)
                 .background(Ink.primary, CircleShape)
         )
@@ -494,7 +498,10 @@ fun PrimaryButton(text: String, busy: Boolean = false, onClick: () -> Unit) {
 /** The one action at the foot of a page, above the navigation bar: filled to go on, outlined to cancel. */
 @Composable
 fun BottomAction(text: String, filled: Boolean = true, enabled: Boolean = true, onClick: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
+    // Frosted, like the cards: a solid band would cut the field's hills off at the foot.
+    val dark = LocalAppIsDark.current
+    Surface(color = if (dark) com.suanran.shushu.ui.theme.GlassDark else com.suanran.shushu.ui.theme.GlassLight,
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
         Surface(
             onClick = onClick,
             enabled = enabled,
@@ -540,7 +547,7 @@ fun TimeColumn(t: Long, modifier: Modifier = Modifier) {
     }
 }
 
-val TIME_COLUMN_WIDTH = 48.dp
+val TIME_COLUMN_WIDTH = 56.dp
 
 /** The leading icon tile or app icon of a list row; dividers start past it. */
 const val LEADING_SIZE = 32
@@ -548,11 +555,13 @@ const val LEADING_SIZE = 32
 /** A quiet pill-shaped button beside a row: grey fill, graphite label, for actions such as stopping. */
 @Composable
 fun PillButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    // A visible pill, not a bare line of text: on glass the old 6% fill all but vanished.
     Surface(
         onClick = onClick,
         enabled = enabled,
         shape = androidx.compose.foundation.shape.CircleShape,
-        color = Ink.fill
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+        border = BorderStroke(0.75.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge,
             color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,

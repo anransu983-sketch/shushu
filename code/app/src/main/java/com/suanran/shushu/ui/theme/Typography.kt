@@ -51,7 +51,7 @@ fun jiumiTypography(isDark: Boolean): Typography {
 object Ink {
     val primary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface
     val secondary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
-    val tertiary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+    val tertiary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
     val fill: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
     /** The sunken track of a segmented control, a step darker than [fill] so its raised thumb stands out. */
     val track: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.075f)

@@ -314,11 +314,12 @@ private fun MonitorCapsule(
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (clock == null) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (clock == null) Ink.primary else Ink.secondary, maxLines = 1)
+                    color = if (clock == null) Ink.primary else Ink.secondary, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (clock != null) {
                     Spacer(Modifier.width(8.dp))
                     Text(clock, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                        fontWeight = FontWeight.SemiBold, color = Ink.primary, maxLines = 1)
+                        fontWeight = FontWeight.SemiBold, color = Ink.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.weight(1f))
                 corner?.invoke()
@@ -358,27 +359,28 @@ private fun RowScope.Figures(figures: List<Pair<String, String>>) {
  * colour, so a burst of activity shows at a glance.
  */
 @Composable
-private fun ActivityBars(times: List<Long>, now: Long, tone: Color) {
-    val buckets = remember(times, now / BUCKET_MS) {
+private fun ActivityBars(times: List<Long>, windowStart: Long, now: Long, tone: Color) {
+    // The chart covers the session so far, the last hour at most: a fresh session fills its
+    // chart instead of showing an empty hour, and slices with no records stay invisible.
+    val span = (now - windowStart).coerceAtLeast(1L)
+    val bucketMs = (span / BUCKETS).coerceAtLeast(1L)
+    val buckets = remember(times, windowStart, now) {
         IntArray(BUCKETS).also { counts ->
-            val start = now - BUCKETS * BUCKET_MS
-            times.forEach { t -> if (t in start..now) counts[((t - start) / BUCKET_MS).toInt().coerceIn(0, BUCKETS - 1)]++ }
+            times.forEach { t -> if (t in windowStart..now) counts[((t - windowStart) / bucketMs).toInt().coerceIn(0, BUCKETS - 1)]++ }
         }
     }
     val top = (buckets.maxOrNull() ?: 0).coerceAtLeast(1)
-    val rest = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)
     Row(Modifier.fillMaxWidth().height(32.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
-        buckets.forEachIndexed { i, count ->
+        buckets.forEach { count ->
             val fraction by androidx.compose.animation.core.animateFloatAsState(
-                (count.toFloat() / top).coerceAtLeast(0.06f), label = "bar")
+                if (count == 0) 0f else (count.toFloat() / top).coerceAtLeast(0.06f), label = "bar")
             Box(Modifier.weight(1f).fillMaxHeight(fraction)
-                .background(if (i == buckets.lastIndex) tone else rest, RoundedCornerShape(2.dp)))
+                .background(if (count > 0) tone else Color.Transparent, RoundedCornerShape(2.dp)))
         }
     }
 }
 
 private const val BUCKETS = 12
-private const val BUCKET_MS = 5 * 60_000L
 
 /** The one step to take, as a small graphite capsule at the panel's right. */
 @Composable
@@ -405,12 +407,12 @@ private fun StatusDot(tone: Color, live: Boolean) {
     }
 }
 
-/** Stopping, as a media control: a round grey button holding a small square, at the panel's corner. */
+/** Stopping, as a media control: a warm orange button holding a small square, at the panel's corner. */
 @Composable
 private fun StopButton(enabled: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, enabled = enabled, shape = CircleShape, color = Ink.fill, modifier = Modifier.size(32.dp)) {
+    Surface(onClick = onClick, enabled = enabled, shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) {
         Box(contentAlignment = Alignment.Center) {
-            Box(Modifier.size(10.dp).background(Ink.primary.copy(alpha = if (enabled) 1f else 0.4f), RoundedCornerShape(2.5.dp)))
+            Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else 0.4f), RoundedCornerShape(2.5.dp)))
         }
     }
 }
@@ -446,9 +448,11 @@ private fun SessionStrip(state: MonitorController.UiState, controller: MonitorCo
             }
         },
         detail = {
-            ActivityBars(times, now, StatusSuccess)
+            // The chart covers the session so far, the last hour at most.
+            val windowStart = session.session.start.coerceAtLeast(now - 3600_000L)
+            ActivityBars(times, windowStart, now, StatusSuccess)
             Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Text(stringResource(R.string.monitor_last_hour), style = MaterialTheme.typography.labelMedium, color = Ink.tertiary)
+                Text(stringResource(if (windowStart == session.session.start) R.string.monitor_start else R.string.monitor_last_hour), style = MaterialTheme.typography.labelMedium, color = Ink.tertiary)
                 Spacer(Modifier.weight(1f))
                 Text(stringResource(R.string.monitor_now), style = MaterialTheme.typography.labelMedium, color = Ink.tertiary)
             }
@@ -476,7 +480,7 @@ private fun InterruptedCard(state: MonitorController.UiState, session: MonitorCo
             Text(stringResource(R.string.action_end_short), style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium, color = Ink.secondary,
                 modifier = Modifier.clip(CircleShape).clickable(enabled = state.busy == null, onClick = controller::stopMonitor)
-                    .padding(horizontal = 8.dp, vertical = 4.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp))
         } },
         message = statusMessage(state)
     )

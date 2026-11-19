@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -132,10 +133,14 @@ fun <T> LazyListScope.timelineItems(
         when (r) {
             is TimelineRow.Day -> if (r.open) {
                 stickyHeader(key = "$prefix-day-${r.day}") {
-                    // Frosted, so the day stays readable while records slide under it.
-                    Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)).clickable { onToggle(r.day) }
-                        .padding(top = 20.dp)) {
-                        DayTitle(r.day, r.entries.size)
+                    // Frosted, so the day stays readable while records slide under it; a hairline
+                    // under it keeps the heading from blurring into the records below.
+                    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))) {
+                        Box(Modifier.fillMaxWidth().clickable { onToggle(r.day) }
+                            .padding(top = 20.dp)) {
+                            DayTitle(r.day, r.entries.size)
+                        }
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             } else {

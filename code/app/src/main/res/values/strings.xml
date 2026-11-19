@@ -484,6 +484,7 @@
     <string name="apps_empty_search">No apps found</string>
     <string name="apps_empty_disabled">No frozen apps</string>
     <string name="apps_empty_deleted">No deleted apps</string>
+    <string name="apps_empty">No apps</string>
     <string name="backup_size">Backup %1$s</string>
     <string name="manage_action_discard">Discard backup</string>
     <string name="confirm_discard_title">Discard the backup of “%1$s”?</string>
@@ -603,6 +604,7 @@
     <string name="service_stopping">Stopping…</string>
     <string name="service_failed">Did not start</string>
     <string name="monitor_live">Monitoring</string>
+    <string name="monitor_start">Start</string>
     <string name="monitor_last_hour">1 hour ago</string>
     <string name="monitor_now">Now</string>
     <string name="monitor_last">Last time %1$s, monitored %2$s</string>

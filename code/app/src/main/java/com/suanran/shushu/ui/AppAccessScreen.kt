@@ -3,6 +3,7 @@
 
 package com.suanran.shushu.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -125,11 +128,15 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
         IconButton(onClick = onBack) {
             Icon(JiumiIcons.ArrowBack, stringResource(R.string.action_back), tint = Ink.primary)
         }
-        Column(Modifier.padding(horizontal = 4.dp)) {
-            Text(stringResource(if (network) R.string.access_network else R.string.access_permissions),
-                style = MaterialTheme.typography.headlineSmall, color = Ink.primary)
-            Text(labels.label(key), Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium, color = Ink.primary)
-            Text(key.pkg.orEmpty(), style = MaterialTheme.typography.bodySmall, color = Ink.secondary)
+        Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(labels, key.pkg, 44)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(stringResource(if (network) R.string.access_network else R.string.access_permissions),
+                    style = MaterialTheme.typography.headlineSmall, color = Ink.primary)
+                Text(labels.label(key), Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium, color = Ink.primary)
+                Text(key.pkg.orEmpty(), style = MaterialTheme.typography.bodySmall, color = Ink.secondary)
+            }
         }
         Spacer(Modifier.height(20.dp))
         val readable = state != null && (state?.has(if (network) "allowed" else "rows") == true)
@@ -199,7 +206,14 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
         }
 
         when {
-            pending -> GroupFooter(stringResource(if (lastAction.first == readAction) R.string.access_reading else R.string.access_applying))
+            pending -> {
+                // Reading or applying: a spinner in the middle of the page, not one small line.
+                Box(Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(22.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                GroupFooter(stringResource(if (lastAction.first == readAction) R.string.access_reading else R.string.access_applying))
+            }
             !readable && (lock.isEmpty() || lock == "unknown") -> {
                 Feedback(stringResource(R.string.access_unknown)) { refresh(readAction) }
             }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -295,6 +296,15 @@ fun AppDetailScreen(
             GroupTitle(stringResource(R.string.section_timeline), Modifier.padding(top = 24.dp)) {
                 category?.let { c ->
                     ActionText(categoryName(c) + " ✕", color = MaterialTheme.colorScheme.onSurface) { category = null }
+                }
+            }
+        }
+        if (detail == null) {
+            // Still reading from the shell: a spinner, not a blank half page.
+            item {
+                Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(22.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

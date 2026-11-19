@@ -44,7 +44,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.suanran.shushu.ui.theme.GlassDark
+import com.suanran.shushu.ui.theme.GlassLight
 import com.suanran.shushu.ui.theme.Ink
+import com.suanran.shushu.ui.theme.LocalAppIsDark
 import com.suanran.shushu.R
 import com.suanran.shushu.data.AppKey
 import com.suanran.shushu.data.JiumiStore
@@ -177,13 +180,16 @@ fun LogRow(
         bottomStart = if (last) corner else 0.dp, bottomEnd = if (last) corner else 0.dp
     )
     val segment = item as? TimelineItem.Segment
+    // Frosted like the cards, so the timeline reads as glass like the rest of the page.
+    val dark = LocalAppIsDark.current
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface)
+        Modifier.fillMaxWidth().clip(shape)
+            .background(if (dark) GlassDark else GlassLight)
             .height(IntrinsicSize.Min).clickable(onClick = onClick)
             .padding(start = 16.dp, end = 10.dp, top = if (first) 4.dp else 0.dp, bottom = if (last) 4.dp else 0.dp)
     ) {
         // The time column: the latest time, and under it where a merged run began.
-        Column(Modifier.width(44.dp).padding(top = 13.dp)) {
+        Column(Modifier.width(56.dp).padding(top = 13.dp)) {
             Text(time.format(item.t), style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             segment?.first?.takeIf { time.format(it) != time.format(item.t) }?.let {

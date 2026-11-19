@@ -61,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -277,10 +278,10 @@ private fun Brand() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Image(it, null, Modifier.size(56.dp).clip(AppShapes.Card)) }
         Spacer(Modifier.width(14.dp))
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, color = Ink.primary)
             Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.bodyMedium, color = Ink.secondary,
-                modifier = Modifier.padding(top = 2.dp))
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

@@ -3,6 +3,7 @@
 
 package com.suanran.shushu.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -55,7 +56,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.suanran.shushu.ui.theme.GlassBorderDark
+import com.suanran.shushu.ui.theme.GlassBorderLight
+import com.suanran.shushu.ui.theme.GlassDark
+import com.suanran.shushu.ui.theme.GlassLight
 import com.suanran.shushu.ui.theme.Ink
+import com.suanran.shushu.ui.theme.LocalAppIsDark
 import com.suanran.shushu.MonitorController
 import com.suanran.shushu.MonitorController.AppState
 import com.suanran.shushu.MonitorController.ListedApp
@@ -182,7 +188,7 @@ fun AppsScreen(controller: MonitorController, labels: AppLabels, onOpenApp: (App
                     query.isNotBlank() -> R.string.apps_empty_search
                     chosen == AppsFilter.DISABLED -> R.string.apps_empty_disabled
                     chosen == AppsFilter.DELETED -> R.string.apps_empty_deleted
-                    else -> R.string.apps_empty_search
+                    else -> R.string.apps_empty
                 }))
             }
         }
@@ -242,7 +248,10 @@ fun AppsScreen(controller: MonitorController, labels: AppLabels, onOpenApp: (App
  */
 @Composable
 private fun GroupStats(counts: Map<AppGroup, Int?>, current: AppGroup?, onJump: (AppGroup) -> Unit) {
-    Surface(shape = AppShapes.Card, color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+    val dark = LocalAppIsDark.current
+    Surface(shape = AppShapes.Card, color = if (dark) GlassDark else GlassLight,
+        border = BorderStroke(1.dp, if (dark) GlassBorderDark else GlassBorderLight),
+        modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(4.dp).height(IntrinsicSize.Min)) {
             AppGroup.entries.forEachIndexed { i, group ->
                 val count = counts[group]
@@ -299,7 +308,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
     val dark = com.suanran.shushu.ui.theme.LocalAppIsDark.current
     Surface(
         shape = AppShapes.Control,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (dark) GlassDark else GlassLight,
         border = androidx.compose.foundation.BorderStroke(
             if (dark) 0.75.dp else 0.5.dp,
             MaterialTheme.colorScheme.onSurface.copy(alpha = if (dark) 0.22f else 0.12f)
@@ -323,8 +332,11 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
                 )
             }
             if (value.isNotEmpty()) {
-                Icon(JiumiIcons.Close, stringResource(R.string.action_cancel), tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp).clickable { onChange("") })
+                // A 32dp touch target around the 18dp glyph.
+                Box(Modifier.size(32.dp).clickable { onChange("") }, contentAlignment = Alignment.Center) {
+                    Icon(JiumiIcons.Close, stringResource(R.string.action_cancel),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
@@ -334,10 +346,11 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
 @Composable
 private fun CardSlice(first: Boolean, last: Boolean, content: @Composable () -> Unit) {
     val r = AppShapes.CardRadius
+    val dark = LocalAppIsDark.current
     Surface(
         shape = RoundedCornerShape(topStart = if (first) r else 0.dp, topEnd = if (first) r else 0.dp,
             bottomStart = if (last) r else 0.dp, bottomEnd = if (last) r else 0.dp),
-        color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()
+        color = if (dark) GlassDark else GlassLight, modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(top = if (first) 4.dp else 0.dp, bottom = if (last) 4.dp else 0.dp)) { content() }
     }

@@ -477,6 +477,7 @@
     <string name="apps_empty_search">没有找到应用</string>
     <string name="apps_empty_disabled">没有冻结的应用</string>
     <string name="apps_empty_deleted">没有已删除的应用</string>
+    <string name="apps_empty">没有应用</string>
     <string name="backup_size">备份 %1$s</string>
     <string name="manage_action_discard">清除备份</string>
     <string name="confirm_discard_title">清除「%1$s」的备份？</string>
@@ -596,6 +597,7 @@
     <string name="service_stopping">停止中…</string>
     <string name="service_failed">未能启动</string>
     <string name="monitor_live">监测中</string>
+    <string name="monitor_start">开始</string>
     <string name="monitor_last_hour">1 小时前</string>
     <string name="monitor_now">现在</string>
     <string name="monitor_last">上次 %1$s，实际监测 %2$s</string>
