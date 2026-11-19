@@ -60,8 +60,6 @@ import androidx.compose.ui.unit.sp
 import com.suanran.shushu.R
 import com.suanran.shushu.ui.theme.GlassBorderDark
 import com.suanran.shushu.ui.theme.GlassBorderLight
-import com.suanran.shushu.ui.theme.GlassDark
-import com.suanran.shushu.ui.theme.GlassLight
 import com.suanran.shushu.ui.theme.Ink
 import com.suanran.shushu.ui.theme.LocalAppIsDark
 
@@ -116,7 +114,7 @@ private fun ShushuTabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modif
             .width(TAB_WIDTH * Tab.entries.size + BAR_PADDING * 2).height(BAR_HEIGHT)
             .shadow(if (dark) 14.dp else 22.dp, CircleShape, ambientColor = Color.Black.copy(alpha = if (dark) 0.6f else 0.10f),
                 spotColor = Color.Black.copy(alpha = if (dark) 0.7f else 0.20f))
-            .background(if (dark) GlassDark else GlassLight, CircleShape)
+            .background(if (dark) BarGlassDark else BarGlassLight, CircleShape)
             .border(1.dp, if (dark) GlassBorderDark else GlassBorderLight, CircleShape)
             .padding(BAR_PADDING)
             .selectableGroup()
@@ -190,6 +188,10 @@ private fun ShushuTabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modif
 
 private val BAR_HEIGHT: Dp = 56.dp
 private val BAR_GAP: Dp = 12.dp
+/** The bar's own glass, nearly solid: rows pass under it while scrolling, and the pale
+ * shared glass lets their text show through the pill. */
+private val BarGlassLight = Color(0xE6FFFFFF)
+private val BarGlassDark = Color(0xE61C1828)
 private val BAR_PADDING: Dp = 4.dp
 /** Each tab's share of the bar; the bar is only as wide as its tabs, not the screen. */
 private val TAB_WIDTH: Dp = 84.dp

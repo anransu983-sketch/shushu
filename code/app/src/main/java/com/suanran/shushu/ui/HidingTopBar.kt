@@ -82,12 +82,15 @@ fun HidingTopBar(
         }
     }
     val topDp = with(density) { height.toDp() }
+    // The bar slides away as the page scrolls; the page's top clearance follows how much of
+    // the bar is still showing, so no blank band is left where the bar was.
+    val visibleTop = (topDp + with(density) { offset.toDp() }).coerceAtLeast(0.dp)
     Box(
         // The bar itself is opaque (see below); the page behind it is the field.
         Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.statusBars).clipToBounds().nestedScroll(connection)
     ) {
-        content(topDp)
+        content(visibleTop)
         Column(
             // Opaque: the page's rows slide under this bar while scrolling, and a transparent
             // bar lets them show through the title and filters.
