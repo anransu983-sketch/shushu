@@ -103,8 +103,7 @@ fun HomeScreen(
     onOpenGroup: (String) -> Unit,
     onOpenAttention: (String) -> Unit,
     onOpenLog: (LogEntry) -> Unit,
-    onOpenPairing: () -> Unit,
-    onOpenPermissionManager: () -> Unit
+    onOpenPairing: () -> Unit
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val pairingFlow = state.method == com.suanran.shushu.access.AccessMethod.WIRELESS &&
@@ -170,20 +169,6 @@ fun HomeScreen(
 
         item { GroupTitle(stringResource(R.string.attention_title), Modifier.padding(top = 28.dp), hamster = HamsterKind.ATTENTION) }
         item { AttentionCard(ledger.attention, onOpenAttention) }
-
-        // From what was seen straight to doing something about it: the permission
-        // manager, next to the attention list instead of only in Settings.
-        item { Spacer(Modifier.height(12.dp)) }
-        item {
-            Card {
-                ListRow(
-                    title = stringResource(R.string.access_permissions),
-                    subtitle = stringResource(R.string.access_permissions_hint),
-                    leading = { IconTile(JiumiIcons.Lock) },
-                    onClick = onOpenPermissionManager
-                ) { Chevron() }
-            }
-        }
 
         item {
             ViewTabs(
