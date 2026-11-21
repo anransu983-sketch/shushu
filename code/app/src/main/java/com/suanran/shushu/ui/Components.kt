@@ -211,16 +211,16 @@ fun ActionText(text: String, enabled: Boolean = true, color: Color = MaterialThe
 
 @Composable
 fun JiumiSwitch(checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
-    // Drawn at exactly the size it lays out at. The Material switch was 52dp wide in layout
-    // and shrunk to 39dp only in drawing, so its footprint ran past the row's end; this one
-    // is 40dp wide in both, and sits 8dp inside the row's end so it never touches the card edge.
-    val thumbOffset by animateDpAsState(if (checked) 18.dp else 2.dp, animationSpec = spring(), label = "switchThumb")
+    // Drawn at exactly the size it lays out at, small, and well inside the row's end: the
+    // 40dp toggle of 0.3.8 still sat flush with the card's visible edge, so this one is
+    // 36dp wide and its right edge sits 20dp inside the row's end.
+    val thumbOffset by animateDpAsState(if (checked) 16.dp else 2.dp, animationSpec = spring(), label = "switchThumb")
     val trackColor by animateColorAsState(
         if (checked) MaterialTheme.colorScheme.onSurface
-        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f), label = "switchTrack")
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f), label = "switchTrack")
     Box(
         modifier = Modifier
-            .size(width = 48.dp, height = 24.dp)
+            .size(width = 56.dp, height = 22.dp)
             .alpha(if (enabled) 1f else 0.38f)
             .clickable(enabled = enabled, onClick = { onCheckedChange(!checked) },
                 indication = null, interactionSource = remember { MutableInteractionSource() }),
@@ -228,7 +228,7 @@ fun JiumiSwitch(checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boo
     ) {
         Box(
             modifier = Modifier
-                .size(width = 40.dp, height = 24.dp)
+                .size(width = 36.dp, height = 22.dp)
                 .clip(RoundedCornerShape(50))
                 .background(trackColor)
         ) {
@@ -236,7 +236,7 @@ fun JiumiSwitch(checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boo
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .offset(x = thumbOffset)
-                    .size(20.dp)
+                    .size(18.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surface)
             )
