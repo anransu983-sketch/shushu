@@ -85,41 +85,49 @@ fun GroupScreen(
     LoadMoreOnScroll(list, more = layout.more) { shown += LOG_PAGE }
 
     // One app's permission state for the by-app switch, read on demand and kept while this
-    // kind is open; a toggle re-reads the app afterwards.
-    val accessCache = remember(groupId) { mutableStateMapOf<AppKey, JSONObject?>() }
-    val accessLoading = remember(groupId) { mutableStateMapOf<AppKey, Boolean>() }
-    val accessPending = remember(groupId) { mutableStateMapOf<AppKey, Boolean>() }
+    // kind is open; a toggle re-reads the app afterwards. Keyed by package: the same
+    // package can arrive under two uids (a second user, a dual-apps copy, a system process
+    // under two uids), and the list must show it once.
+    val accessCache = remember(groupId) { mutableStateMapOf<String, JSONObject?>() }
+    val accessKey = remember(groupId) { mutableStateMapOf<String, AppKey>() }
+    val accessLoading = remember(groupId) { mutableStateMapOf<String, Boolean>() }
+    val accessPending = remember(groupId) { mutableStateMapOf<String, Boolean>() }
     val appStats = remember(entries) {
-        entries.groupBy { it.key }
-            .map { (key, rows) -> GroupAppStat(key, rows.size, rows.maxOf { it.item.t }) }
+        entries.groupBy { it.key.pkg ?: "uid:${it.key.uid}" }
+            .map { (groupKey, rows) ->
+                val keys = rows.map { it.key }.distinct()
+                    .sortedByDescending { k -> rows.count { it.key == k } }
+                GroupAppStat(groupKey, keys, rows.size, rows.maxOf { it.item.t })
+            }
             .sortedWith(compareByDescending<GroupAppStat> { it.count }.thenByDescending { it.last })
     }
-    fun toggleGroupAccess(key: AppKey, turnOn: Boolean) {
-        if (accessPending[key] == true) return
-        val rows = groupPermissionRows(accessCache[key], permissions)
+    fun toggleGroupAccess(stat: GroupAppStat, turnOn: Boolean) {
+        val key = accessKey[stat.groupKey] ?: return
+        if (accessPending[stat.groupKey] == true) return
+        val rows = groupPermissionRows(accessCache[stat.groupKey], permissions)
         if (rows.none { it.switchable(expert) }) return
-        accessPending[key] = true
+        accessPending[stat.groupKey] = true
         scope.launch {
             if (turnOn) {
                 // Restore only what this switch itself closed; when nothing was recorded,
                 // fall back to every permission of this kind that is off now.
-                val restore = deniedSet(context, key, groupId)
+                val restore = deniedSet(context, stat.key, groupId)
                 val targets = if (restore.isNotEmpty()) rows.filter { it.name in restore }
                     else rows.filter { !it.effectiveAllowed }
                 for (row in targets) {
                     if (!row.switchable(expert)) continue
                     controller.appAccess(key, if (row.forcedOff) "forceAllow" else "allow", row.name)
                 }
-                clearDeniedSet(context, key, groupId)
+                clearDeniedSet(context, stat.key, groupId)
             } else {
                 val onRows = rows.filter { it.effectiveAllowed && it.switchable(expert) }
-                storeDeniedSet(context, key, groupId, onRows.map { it.name })
+                storeDeniedSet(context, stat.key, groupId, onRows.map { it.name })
                 for (row in onRows) {
                     controller.appAccess(key, if (row.editable) "deny" else "forceDeny", row.name)
                 }
             }
-            accessCache[key] = controller.appAccess(key, "permissions")
-            accessPending[key] = false
+            accessCache[stat.groupKey] = controller.appAccess(key, "permissions")
+            accessPending[stat.groupKey] = false
         }
     }
 
@@ -162,8 +170,8 @@ fun GroupScreen(
                         appStats.forEachIndexed { index, stat ->
                             if (index > 0) InsetDivider(start = TIME_COLUMN_WIDTH + 60.dp)
                             GroupAppRow(stat, labels, controller, permissions, expert,
-                                accessCache, accessLoading, accessPending,
-                                onToggle = { on -> toggleGroupAccess(stat.key, on) },
+                                accessCache, accessKey, accessLoading, accessPending,
+                                onToggle = { on -> toggleGroupAccess(stat, on) },
                                 onOpenApp = onOpenApp)
                         }
                     } }
@@ -218,7 +226,10 @@ private val GROUP_PERMISSIONS = mapOf(
     "health" to listOf("android.permission.BODY_SENSORS", "android.permission.BODY_SENSORS_BACKGROUND", "android.permission.ACTIVITY_RECOGNITION")
 )
 
-private data class GroupAppStat(val key: AppKey, val count: Int, val last: Long)
+private data class GroupAppStat(val groupKey: String, val keys: List<AppKey>, val count: Int, val last: Long) {
+    /** The key to show: the one with the most records. */
+    val key: AppKey get() = keys.first()
+}
 
 private data class GroupPermissionState(
     val name: String, val allowed: Boolean?, val editable: Boolean, val forceable: Boolean,
@@ -276,21 +287,32 @@ private fun clearDeniedSet(context: Context, key: AppKey, groupId: String) {
 private fun GroupAppRow(
     stat: GroupAppStat, labels: AppLabels, controller: MonitorController,
     permissions: List<String>, expert: Boolean,
-    accessCache: MutableMap<AppKey, JSONObject?>, accessLoading: MutableMap<AppKey, Boolean>,
-    accessPending: MutableMap<AppKey, Boolean>,
+    accessCache: MutableMap<String, JSONObject?>, accessKey: MutableMap<String, AppKey>,
+    accessLoading: MutableMap<String, Boolean>, accessPending: MutableMap<String, Boolean>,
     onToggle: (Boolean) -> Unit, onOpenApp: (AppKey) -> Unit
 ) {
-    LaunchedEffect(stat.key) {
-        if (permissions.isNotEmpty() && !accessCache.containsKey(stat.key)) {
-            accessLoading[stat.key] = true
+    // The same package can arrive under two uids; the probe only answers for the uid that
+    // really owns the package, so try the keys in record order until one yields this kind's
+    // permissions, and switch through that one.
+    LaunchedEffect(stat.groupKey) {
+        if (permissions.isNotEmpty() && !accessCache.containsKey(stat.groupKey)) {
+            accessLoading[stat.groupKey] = true
             try {
-                accessCache[stat.key] = controller.appAccess(stat.key, "permissions")
+                for (key in stat.keys) {
+                    val read = controller.appAccess(key, "permissions")
+                    if (groupPermissionRows(read, permissions).isNotEmpty()) {
+                        accessCache[stat.groupKey] = read
+                        accessKey[stat.groupKey] = key
+                        break
+                    }
+                }
+                if (!accessCache.containsKey(stat.groupKey)) accessCache[stat.groupKey] = null
             } finally {
-                accessLoading[stat.key] = false
+                accessLoading[stat.groupKey] = false
             }
         }
     }
-    val state = accessCache[stat.key]
+    val state = accessCache[stat.groupKey]
     val rows = remember(state, permissions) { groupPermissionRows(state, permissions) }
     val on = rows.any { it.effectiveAllowed }
     val switchable = rows.any { it.switchable(expert) }
@@ -301,10 +323,10 @@ private fun GroupAppRow(
         onClick = { onOpenApp(stat.key) }
     ) {
         when {
-            accessLoading[stat.key] == true -> CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp),
+            accessLoading[stat.groupKey] == true -> CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             rows.isEmpty() -> Chevron()
-            switchable -> JiumiSwitch(on, enabled = accessPending[stat.key] != true, onCheckedChange = onToggle)
+            switchable -> JiumiSwitch(on, enabled = accessPending[stat.groupKey] != true, onCheckedChange = onToggle)
             else -> JiumiSwitch(on, enabled = false, onCheckedChange = {})
         }
     }
