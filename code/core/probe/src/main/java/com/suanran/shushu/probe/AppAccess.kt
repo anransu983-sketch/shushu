@@ -95,7 +95,8 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val runtimeNames = runtime.map { it.groupValues[1] }.toSet()
         val requested = lines.subList(start, userStart).dropWhile { it.trim() != "requested permissions:" }.drop(1)
             .takeWhile { it.startsWith("      ") }.map(String::trim).filter(permissionName::matches)
-        val (modes, uidModes) = opModes(t.pkg)
+        val modes = opModes(t.pkg)
+        val uidModes = uidModes(t.uid)
         // A system package's fixed runtime grants cannot be moved by writing the op: the system
         // recomputes the mode from the grant, so writing only leaves side effects behind.
         val isSystemPackage = lines.any { it.trim().startsWith("pkgFlags=") && "SYSTEM" in it }
@@ -117,22 +118,31 @@ internal class AppAccess(context: Context, directory: File, private val self: St
     }
 
     /**
-     * The AppOps mode of each operation of [pkg], package-level and uid-level apart: a uid-level
-     * mode wins over the package-level one, and `appops get` prints it as a `Uid mode:` line.
+     * The AppOps mode of each operation of [pkg] at the package level. `appops get` prints the
+     * uid-level block first, and only its first row carries the `Uid mode:` prefix, so a bare
+     * continuation row can leak into this map; the authoritative uid modes come from [uidModes]
+     * and win in [Grant.effectiveMode].
      */
-    private fun opModes(pkg: String): Pair<Map<String, String>, Map<String, String>> {
-        val out = command("appops", "get", pkg) ?: return Pair(emptyMap<String, String>(), emptyMap<String, String>())
-        val packageModes = mutableMapOf<String, String>()
-        val uidModes = mutableMapOf<String, String>()
-        for (raw in out.lines()) {
-            val line = raw.trim()
-            val uid = line.startsWith("Uid mode:")
-            val body = if (uid) line.removePrefix("Uid mode:").trim() else line
-            val match = opModeRow.find(body) ?: continue
-            val op = normalizeOp(match.groupValues[1])
-            if (uid) uidModes[op] = match.groupValues[2] else packageModes[op] = match.groupValues[2]
-        }
-        return packageModes to uidModes
+    private fun opModes(pkg: String): Map<String, String> {
+        val out = command("appops", "get", pkg) ?: return emptyMap()
+        return out.lines().mapNotNull { line ->
+            val body = line.trim().removePrefix("Uid mode:").trim()
+            val match = opModeRow.find(body) ?: return@mapNotNull null
+            normalizeOp(match.groupValues[1]) to match.groupValues[2]
+        }.toMap()
+    }
+
+    /**
+     * The uid-level modes alone, from `appops get <uid>`: that snapshot holds only the uid
+     * block, so every row in it is a uid entry, prefix or not.
+     */
+    private fun uidModes(uid: Int): Map<String, String> {
+        val out = command("appops", "get", uid.toString()) ?: return emptyMap()
+        return out.lines().mapNotNull { line ->
+            val body = line.trim().removePrefix("Uid mode:").trim()
+            val match = opModeRow.find(body) ?: return@mapNotNull null
+            normalizeOp(match.groupValues[1]) to match.groupValues[2]
+        }.toMap()
     }
 
     /** The AppOps operation a permission gates, if any: reflection first, a short list as backup. */
