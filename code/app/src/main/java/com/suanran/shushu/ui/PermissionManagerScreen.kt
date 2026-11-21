@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -24,9 +25,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +45,7 @@ import com.suanran.shushu.data.AppKey
 import com.suanran.shushu.ui.icons.JiumiIcons
 import com.suanran.shushu.ui.theme.Ink
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -64,6 +69,23 @@ fun PermissionManagerScreen(controller: MonitorController, labels: AppLabels,
     val shown = apps?.filter {
         query.isBlank() || it.second.contains(query, ignoreCase = true) || it.first.pkg.contains(query, ignoreCase = true)
     }.orEmpty()
+    // Same four groups as the app list, in its order: a strip above the list counts each group,
+    // taps glide the list to that group, and the group in view is shaded.
+    val groups = remember(shown) {
+        shown.sortedWith(compareBy({ AppGroup.of(it.first).ordinal }, { it.second.lowercase() }))
+            .groupBy { AppGroup.of(it.first) }
+    }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // Where each group's title sits in the list: for every group before it a title and its rows.
+    val titleIndex = remember(groups) {
+        var i = 0
+        groups.mapValues { (_, list) -> i.also { i += list.size + 1 } }
+    }
+    // The group being read: the last one whose title is at or above the top of the list.
+    val current by remember(titleIndex) {
+        derivedStateOf { titleIndex.entries.lastOrNull { it.value <= listState.firstVisibleItemIndex }?.key }
+    }
     Column(
         Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 16.dp)
@@ -103,20 +125,25 @@ fun PermissionManagerScreen(controller: MonitorController, labels: AppLabels,
         } else if (shown.isEmpty()) {
             GroupFooter(stringResource(R.string.apps_empty))
         } else {
-            // User apps and system components in their own groups, each under its own title.
-            val userApps = shown.filter { !it.first.preinstalled }
-            val systemApps = shown.filter { it.first.preinstalled }
-            LazyColumn(Modifier.fillMaxWidth()) {
-                if (userApps.isNotEmpty()) {
-                    item { GroupTitle(stringResource(R.string.perm_manager_user), Modifier.padding(top = 4.dp)) }
-                    items(userApps, key = { it.first.pkg }) { (app, name) ->
-                        AppRow(labels, app, name, onOpenAccess)
-                        Spacer(Modifier.height(8.dp))
+            GroupStats(counts = AppGroup.entries.associateWith { groups[it]?.size }, current = current, onJump = { group ->
+                titleIndex[group]?.let { scope.launch { listState.animateScrollToItem(it) } }
+            })
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
+                groups.forEach { (group, list) ->
+                    item(key = "title-$group") {
+                        GroupTitle(
+                            stringResource(group.label) + " · " + formatCount(list.size.toLong()),
+                            Modifier.padding(top = if (group == groups.keys.first()) 4.dp else 16.dp),
+                            hamster = when (group) {
+                                AppGroup.STORE -> HamsterKind.APPS
+                                AppGroup.SIDELOADED -> HamsterKind.UNINSTALL
+                                AppGroup.PREINSTALLED -> HamsterKind.SETTINGS
+                                AppGroup.COMPONENT -> HamsterKind.TIMELINE
+                            }
+                        )
                     }
-                }
-                if (systemApps.isNotEmpty()) {
-                    item { GroupTitle(stringResource(R.string.perm_manager_system), Modifier.padding(top = 16.dp)) }
-                    items(systemApps, key = { it.first.pkg }) { (app, name) ->
+                    items(list, key = { it.first.pkg }) { (app, name) ->
                         AppRow(labels, app, name, onOpenAccess)
                         Spacer(Modifier.height(8.dp))
                     }

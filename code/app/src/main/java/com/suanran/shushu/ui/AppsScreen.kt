@@ -80,7 +80,7 @@ private enum class AppsFilter(val label: Int, val state: AppState?) {
 }
 
 /** The four kinds of app the list is grouped into, in its order; [source] is null for system components. */
-private enum class AppGroup(val label: Int, val source: AppSource?, val tint: Color) {
+internal enum class AppGroup(val label: Int, val source: AppSource?, val tint: Color) {
     STORE(R.string.apps_stat_store, AppSource.STORE, Color(0xFF4F8CF0)),
     SIDELOADED(R.string.apps_stat_sideloaded, AppSource.SIDELOADED, Color(0xFFE5A23B)),
     PREINSTALLED(R.string.apps_stat_preinstalled, AppSource.PREINSTALLED, Color(0xFF3FB28C)),
@@ -247,7 +247,7 @@ fun AppsScreen(controller: MonitorController, labels: AppLabels, onOpenApp: (App
  * groups apart. The group in view is shaded; an empty one is dimmed and does nothing when tapped.
  */
 @Composable
-private fun GroupStats(counts: Map<AppGroup, Int?>, current: AppGroup?, onJump: (AppGroup) -> Unit) {
+internal fun GroupStats(counts: Map<AppGroup, Int?>, current: AppGroup?, onJump: (AppGroup) -> Unit) {
     val dark = LocalAppIsDark.current
     Surface(shape = AppShapes.Card, color = if (dark) GlassDark else GlassLight,
         border = BorderStroke(1.dp, if (dark) GlassBorderDark else GlassBorderLight),

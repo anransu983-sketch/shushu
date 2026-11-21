@@ -689,8 +689,6 @@
     <string name="access_forced_denied">Forced off</string>
     <string name="access_force_warning">Expert mode: forcing a permission off can break this component and what depends on it. It can be undone here.</string>
     <string name="perm_manager_expert_hint">Core system components appear only in expert mode.</string>
-    <string name="perm_manager_user">Apps</string>
-    <string name="perm_manager_system">System components</string>
     <string name="access_lock_users">This firewall command can affect other Android users or profiles.</string>
     <string name="access_lock_external">This network rule was set outside Shushu.</string>
     <string name="access_lock_chain">The firewall could not be enabled without affecting other rules.</string>
