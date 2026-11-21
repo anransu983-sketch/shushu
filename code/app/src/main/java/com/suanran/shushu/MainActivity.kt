@@ -37,6 +37,7 @@ import com.suanran.shushu.ui.AppsScreen
 import com.suanran.shushu.ui.AboutScreen
 import com.suanran.shushu.ui.LicensesScreen
 import com.suanran.shushu.ui.PairingScreen
+import com.suanran.shushu.ui.PermissionManagerScreen
 import com.suanran.shushu.ui.SetupScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,7 +76,8 @@ class MainActivity : AppCompatActivity() {
         setContent {
             JiumiTheme {
                 // Pages above the tabs: "app:uid|package", "group:id", "attention:id", "log:id", "theme",
-                // "language", "spool", "sessions", "export", "about", "licenses", "notice:index", "pairing".
+                // "language", "spool", "sessions", "export", "about", "licenses", "notice:index", "pairing",
+                // "permManager".
                 var stack by rememberSaveable { mutableStateOf(listOf<String>()) }
                 var tab by rememberSaveable { mutableStateOf(Tab.MONITOR) }
                 // Each page keeps its own state (scroll, chosen view, filters) while pages above it are open.
@@ -92,6 +94,7 @@ class MainActivity : AppCompatActivity() {
                     onOpenTheme = { push("theme") }, onOpenLanguage = { push("language") },
                     onOpenSpool = { push("spool") }, onOpenSessions = { push("sessions") }, onOpenExport = { push("export") },
                     onOpenAbout = { push("about") }, onOpenPairing = { push("pairing") },
+                    onOpenPermissionManager = { push("permManager") },
                     onOpenMonitor = { stack = listOf(); tab = Tab.MONITOR })
                 val setupDone by preferences.setupDone.collectAsStateWithLifecycle()
                 // On opening, a check for a newer release when one is due; a release found is offered once
@@ -150,6 +153,8 @@ class MainActivity : AppCompatActivity() {
                         onOpenApp = { push("app:${it.uid}|${it.pkg.orEmpty()}") })
                     top == "pairing" -> PairingScreen(controller, onBack = pop, onPair = ::pair,
                         onOpenWirelessDebugging = ::openWirelessDebugging)
+                    top == "permManager" -> PermissionManagerScreen(controller, labels,
+                        onOpenAccess = { key -> push("access:permissions|${key.uid}|${key.pkg.orEmpty()}") }, onBack = pop)
                     top == "spool" -> SpoolScreen(controller, onBack = pop)
                     top == "about" -> AboutScreen(labels, onBack = pop, onOpenLicenses = { push("licenses") })
                     top == "licenses" -> LicensesScreen(onBack = pop, onOpenNotice = { push("notice:$it") })

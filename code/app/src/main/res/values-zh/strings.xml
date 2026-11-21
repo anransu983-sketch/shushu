@@ -677,6 +677,10 @@
     <string name="access_unknown">无法确认系统状态。</string>
     <string name="access_lock_shared">此应用与其他应用共用 UID，无法单独控制。</string>
     <string name="access_lock_protected">此系统身份受保护。</string>
+    <string name="access_lock_system">系统核心组件，专家模式可强制关闭其权限。</string>
+    <string name="access_forced_denied">已强制关闭</string>
+    <string name="access_force_warning">专家模式：强制关闭可能让此组件及依赖它的功能失效，可在此恢复。</string>
+    <string name="perm_manager_expert_hint">系统核心组件只在专家模式下列出。</string>
     <string name="access_lock_users">此防火墙命令可能影响其他用户或工作资料。</string>
     <string name="access_lock_external">此限制由薯薯以外的工具设置。</string>
     <string name="access_lock_chain">无法确认开启防火墙时仅影响此应用。</string>

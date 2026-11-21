@@ -20,7 +20,13 @@ internal class AppAccess(context: Context, directory: File, private val self: St
     private data class Target(
         val pkg: String, val uid: Int, val user: Int, val lock: String?, val identity: String, val peers: List<String>
     )
-    private data class Grant(val name: String, val allowed: Boolean?, val editable: Boolean)
+    private data class Grant(val name: String, val allowed: Boolean?, val editable: Boolean,
+                             val op: String? = null, val mode: String? = null, val forceable: Boolean = false) {
+        /** The operation is cut off at the AppOps layer, whatever the permission grant says. */
+        val forcedOff: Boolean get() = mode == "ignore" || mode == "deny"
+        /** What the app can actually do right now. */
+        val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
+    }
     private data class Firewall(val enabled: Boolean, val denied: Boolean, val boot: String)
 
     @Synchronized
@@ -43,8 +49,11 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val rows = listed.lines().filter(String::isNotBlank).map { packageRow.matchEntire(it.trim()) ?: return null }
         if (rows.none { it.groupValues[1] == pkg && it.groupValues[2] == "$uid" }) return null
         val info = if (user == 0) runCatching { pm.getPackageInfo(pkg, 0) }.getOrNull() else null
+        // The hard floor is only this app itself and what the system keeps alive: a system
+        // identity or a shared UID can be forced in expert mode, through AppOps.
         val lock = when {
-            pkg == self || uid % USER_RANGE < 10_000 || (info?.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_PERSISTENT != 0 -> "protected"
+            pkg == self || (info?.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_PERSISTENT != 0 -> "protected"
+            uid % USER_RANGE < 10_000 -> "system"
             rows.size != 1 -> "shared"
             info == null || info.applicationInfo?.uid != uid -> "unknown"
             else -> null
@@ -72,6 +81,7 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val runtimeNames = runtime.map { it.groupValues[1] }.toSet()
         val requested = lines.subList(start, userStart).dropWhile { it.trim() != "requested permissions:" }.drop(1)
             .takeWhile { it.startsWith("      ") }.map(String::trim).filter(permissionName::matches)
+        val modes = opModes(t.pkg)
         return requested.distinct().map { name ->
             val state = states[name]
             val flags = state?.groupValues?.get(3).orEmpty().split('|').map(String::trim)
@@ -79,56 +89,105 @@ internal class AppAccess(context: Context, directory: File, private val self: St
             val editable = t.lock == null && name in runtimeNames &&
                 info?.protection == PermissionInfo.PROTECTION_DANGEROUS &&
                 flags.none { it == "SYSTEM_FIXED" || it == "POLICY_FIXED" || it == "GRANTED_BY_ROLE" }
-            Grant(name, state?.groupValues?.get(2)?.toBooleanStrictOrNull(), editable)
+            val op = opFor(name)
+            Grant(name, state?.groupValues?.get(2)?.toBooleanStrictOrNull(), editable,
+                op, op?.let { modes[it] }, forceable = op != null && t.lock != "protected")
         }
     }
+
+    /** The AppOps mode of each operation of [pkg]: "allow", "ignore", "deny", "foreground", or absent. */
+    private fun opModes(pkg: String): Map<String, String> {
+        val out = command("appops", "get", pkg) ?: return emptyMap()
+        return out.lines().mapNotNull { line ->
+            val match = opModeRow.find(line.trim()) ?: return@mapNotNull null
+            normalizeOp(match.groupValues[1]) to match.groupValues[2]
+        }.toMap()
+    }
+
+    /** The AppOps operation a permission gates, if any: reflection first, a short list as backup. */
+    private fun opFor(permission: String): String? {
+        val reflected = runCatching {
+            android.app.AppOpsManager::class.java.getMethod("permissionToOp", String::class.java)
+                .invoke(null, permission) as? String
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+        val op = reflected ?: permissionOpFallback[permission] ?: return null
+        return normalizeOp(op)
+    }
+
+    /** "android:fine_location" and "FINE_LOCATION" are the same operation. */
+    private fun normalizeOp(op: String) = op.removePrefix("android:").uppercase()
 
     private fun permissions(t: Target, saved: JSONObject, action: String, name: String): JSONObject {
         var rows = grants(t) ?: return JSONObject().put("lock", "unknown")
         val key = "permissions:${t.identity}"
         val owned = saved.optJSONObject(key) ?: JSONObject().also { saved.put(key, it) }
+        val force = action.startsWith("force")
+        val allow = action == "allow" || action == "restoreAll" || action == "forceAllow" || action == "forceRestoreAll"
         val changes = when (action) {
             "deny", "allow" -> rows.filter { it.name == name }
+            "forceDeny", "forceAllow" -> rows.filter { it.name == name && it.forceable }
             "denyAll" -> rows.filter { it.editable && it.allowed == true }
+            "forceDenyAll" -> rows.filter { it.forceable && it.effectiveAllowed }
             "restoreAll" -> rows.filter { it.editable && owned.optBoolean(it.name) && it.allowed == false }
+            "forceRestoreAll" -> rows.filter { it.forceable && owned.optBoolean(it.name) && (it.forcedOff || it.allowed == false) }
             else -> emptyList()
         }
         val failed = JSONArray()
         var changed = 0
-        val allow = action == "allow" || action == "restoreAll"
         for (row in changes) {
-            if (!row.editable || target(t.pkg, t.uid, t.user) != t) {
+            // A row cut off at the AppOps layer can only come back through AppOps, even when the
+            // plain allow path would otherwise do: granting the permission alone would leave the
+            // operation ignored and report a success that is not one.
+            val useForce = force || row.forcedOff
+            val usable = if (useForce) row.forceable else row.editable
+            if (!usable || target(t.pkg, t.uid, t.user) != t) {
                 failed.put(row.name)
                 continue
             }
-            if (row.allowed == allow) continue
+            if (useForce && ((allow && !row.forcedOff && row.allowed == true) || (!allow && row.forcedOff))) continue
+            if (!useForce && row.allowed == allow) continue
             if (!allow) {
                 owned.put(row.name, true)
                 write(saved)
             }
-            val verb = if (allow) "grant" else "revoke"
-            command("pm", verb, "--user", "${t.user}", t.pkg, row.name)
+            if (useForce) {
+                val op = row.op ?: continue
+                command("appops", "set", "--user", "${t.user}", t.pkg, op, if (allow) "allow" else "ignore")
+                // Best effort: also move the runtime grant, which succeeds unless the system fixed it.
+                command("pm", if (allow) "grant" else "revoke", "--user", "${t.user}", t.pkg, row.name)
+            } else {
+                val verb = if (allow) "grant" else "revoke"
+                command("pm", verb, "--user", "${t.user}", t.pkg, row.name)
+            }
             val current = grants(t)
             if (current == null) {
                 failed.put(row.name)
                 return JSONObject().put("lock", "unknown").put("failed", failed).put("changed", changed)
             }
             rows = current
-            if (current.firstOrNull { it.name == row.name }?.allowed == allow) {
+            val now = current.firstOrNull { it.name == row.name }
+            val applied = if (useForce) {
+                if (allow) now?.let { !it.forcedOff && it.allowed == true } == true else now?.forcedOff == true
+            } else {
+                now?.allowed == allow
+            }
+            if (applied) {
                 changed++
                 if (allow) owned.remove(row.name)
             } else {
-                if (!allow && current.any { it.name == row.name && it.allowed == true }) owned.remove(row.name)
+                if (!allow && !useForce && now?.allowed == true) owned.remove(row.name)
                 failed.put(row.name)
             }
             write(saved)
         }
-        if (action in setOf("deny", "allow") && changes.isEmpty()) failed.put(name)
+        if (action in setOf("deny", "allow", "forceDeny", "forceAllow") && changes.isEmpty()) failed.put(name)
         return JSONObject().put("lock", t.lock)
             .put("rows", JSONArray(rows.map {
                 JSONObject().put("name", it.name).put("allowed", it.allowed).put("editable", it.editable)
+                    .put("forceable", it.forceable)
+                    .apply { it.op?.let { put("op", it) }; it.mode?.let { put("mode", it) } }
             }))
-            .put("restore", rows.any { it.editable && it.allowed == false && owned.optBoolean(it.name) })
+            .put("restore", rows.any { (it.editable && it.allowed == false || it.forceable && it.forcedOff) && owned.optBoolean(it.name) })
             .put("changed", changed).put("failed", failed)
     }
 
@@ -226,12 +285,47 @@ internal class AppAccess(context: Context, directory: File, private val self: St
 
     private companion object {
         const val USER_RANGE = 100_000
-        val actions = setOf("permissions", "allow", "deny", "denyAll", "restoreAll", "network", "networkAllow", "networkDeny")
+        val actions = setOf("permissions", "allow", "deny", "denyAll", "restoreAll",
+            "forceDeny", "forceAllow", "forceDenyAll", "forceRestoreAll",
+            "network", "networkAllow", "networkDeny")
         val packageRow = Regex("""package:([A-Za-z0-9_.]+)\s+uid:(\d+)""")
         val userRow = Regex("""^\s*User \d+:""")
         val userList = Regex("""UserInfo\{(\d+):[^}]*\}(?:\s+running)?""")
         val permissionName = Regex("""[A-Za-z0-9_.]+""")
         val grantRow = Regex("""([A-Za-z0-9_.]+): granted=(true|false)(?:, flags=\[(.*)])?""")
+        val opModeRow = Regex("""^([A-Za-z0-9_:]+):\s*([a-z]+)""")
+        /** Permission to AppOps operation, for when the framework's own mapping is out of reach. */
+        val permissionOpFallback = mapOf(
+            "android.permission.ACCESS_FINE_LOCATION" to "FINE_LOCATION",
+            "android.permission.ACCESS_COARSE_LOCATION" to "COARSE_LOCATION",
+            "android.permission.ACCESS_BACKGROUND_LOCATION" to "FINE_LOCATION",
+            "android.permission.CAMERA" to "CAMERA",
+            "android.permission.RECORD_AUDIO" to "RECORD_AUDIO",
+            "android.permission.READ_CONTACTS" to "READ_CONTACTS",
+            "android.permission.WRITE_CONTACTS" to "WRITE_CONTACTS",
+            "android.permission.READ_CALL_LOG" to "READ_CALL_LOG",
+            "android.permission.READ_PHONE_STATE" to "READ_PHONE_STATE",
+            "android.permission.CALL_PHONE" to "CALL_PHONE",
+            "android.permission.READ_SMS" to "READ_SMS",
+            "android.permission.SEND_SMS" to "SEND_SMS",
+            "android.permission.RECEIVE_SMS" to "RECEIVE_SMS",
+            "android.permission.READ_CALENDAR" to "READ_CALENDAR",
+            "android.permission.WRITE_CALENDAR" to "WRITE_CALENDAR",
+            "android.permission.READ_MEDIA_IMAGES" to "READ_MEDIA_IMAGES",
+            "android.permission.READ_MEDIA_VIDEO" to "READ_MEDIA_VIDEO",
+            "android.permission.READ_MEDIA_AUDIO" to "READ_MEDIA_AUDIO",
+            "android.permission.READ_EXTERNAL_STORAGE" to "READ_EXTERNAL_STORAGE",
+            "android.permission.BODY_SENSORS" to "BODY_SENSORS",
+            "android.permission.ACTIVITY_RECOGNITION" to "ACTIVITY_RECOGNITION",
+            "android.permission.BLUETOOTH_SCAN" to "BLUETOOTH_SCAN",
+            "android.permission.BLUETOOTH_CONNECT" to "BLUETOOTH_CONNECT",
+            "android.permission.BLUETOOTH_ADVERTISE" to "BLUETOOTH_ADVERTISE",
+            "android.permission.NEARBY_WIFI_DEVICES" to "NEARBY_WIFI_DEVICES",
+            "android.permission.POST_NOTIFICATIONS" to "POST_NOTIFICATION",
+            "android.permission.SYSTEM_ALERT_WINDOW" to "SYSTEM_ALERT_WINDOW",
+            "android.permission.REQUEST_INSTALL_PACKAGES" to "REQUEST_INSTALL_PACKAGES",
+            "android.permission.USE_FULL_SCREEN_INTENT" to "USE_FULL_SCREEN_INTENT"
+        )
         val firewallRow = Regex("""(\d+) ((?:[A-Z0-9_]+_MATCH)(?: [A-Z0-9_]+_MATCH)*)""")
     }
 }

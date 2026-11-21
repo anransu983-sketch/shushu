@@ -62,6 +62,7 @@ fun SettingsScreen(
     onOpenExport: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenPairing: () -> Unit,
+    onOpenPermissionManager: () -> Unit = {},
     onOpenMonitor: () -> Unit = {}
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
@@ -219,6 +220,9 @@ fun SettingsScreen(
                             if (on) askAllowRemove = true else controller.setAllowRemovePreinstalled(false)
                         }
                     }
+                    InsetDivider()
+                    ListRow(stringResource(R.string.access_permissions), leading = { IconTile(JiumiIcons.Lock) },
+                        onClick = onOpenPermissionManager) { Chevron() }
                 }
                 GroupFooter(stringResource(R.string.settings_allow_remove_desc))
                 Spacer(Modifier.height(16.dp))

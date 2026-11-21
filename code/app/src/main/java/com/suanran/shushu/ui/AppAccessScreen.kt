@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suanran.shushu.MonitorController
 import com.suanran.shushu.R
 import com.suanran.shushu.data.AppKey
@@ -48,13 +49,20 @@ import org.json.JSONObject
 
 private data class PermissionRow(
     val name: String, val label: String, val group: String, val icon: ImageVector,
-    val allowed: Boolean?, val editable: Boolean
-)
+    val allowed: Boolean?, val editable: Boolean, val mode: String? = null, val forceable: Boolean = false
+) {
+    /** Cut off at the AppOps layer, whatever the permission grant says. */
+    val forcedOff: Boolean get() = mode == "ignore" || mode == "deny"
+    /** What the app can actually do right now. */
+    val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
+}
 
 @Composable
 fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKey, network: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val uiState by controller.state.collectAsStateWithLifecycle()
+    val expert = uiState.expertMode
     val readAction = if (network) "network" else "permissions"
     var state by remember(key, network) { mutableStateOf<JSONObject?>(null) }
     var pending by remember(key, network) { mutableStateOf(true) }
@@ -91,13 +99,16 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
             val info = runCatching { pm.getPermissionInfo(name, 0) }.getOrNull()
             val label = info?.loadLabel(pm)?.toString() ?: name
             val editable = item.optBoolean("editable")
+            val forceable = item.optBoolean("forceable")
+            val mode = item.optString("mode").takeIf { it.isNotEmpty() }
             val category = groups[name]
-            val fallback = context.getString(if (editable) R.string.access_group_other else R.string.access_group_locked)
+            val controllable = editable || forceable
+            val fallback = context.getString(if (controllable) R.string.access_group_other else R.string.access_group_locked)
             val labelId = category?.let {
                 @Suppress("DiscouragedApi")
                 context.resources.getIdentifier("access_group_$it", "string", context.packageName)
             } ?: 0
-            val group = if (editable && labelId != 0) context.getString(labelId) else fallback
+            val group = if (controllable && labelId != 0) context.getString(labelId) else fallback
             val icon = when (category) {
                 "location" -> JiumiIcons.MapPin
                 "camera" -> JiumiIcons.Camera
@@ -111,7 +122,8 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                 "health", "microphone" -> JiumiIcons.Activity
                 else -> JiumiIcons.Lock
             }
-            PermissionRow(name, label, group, icon, item.takeUnless { it.isNull("allowed") }?.optBoolean("allowed"), editable)
+            PermissionRow(name, label, group, icon, item.takeUnless { it.isNull("allowed") }?.optBoolean("allowed"),
+                editable, mode, forceable)
         }
     }
     val enabled = rows.filter { it.editable && it.allowed == true }
@@ -180,26 +192,36 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                 }
             }
             if (rows.isEmpty()) GroupFooter(stringResource(R.string.access_no_permissions))
-            rows.sortedWith(compareBy({ !it.editable }, { it.group }, { it.label })).groupBy { it.editable to it.group }
+            rows.sortedWith(compareBy({ !(it.editable || it.forceable) }, { it.group }, { it.label }))
+                .groupBy { (it.editable || it.forceable) to it.group }
                 .forEach { (group, items) ->
                     GroupTitle(group.second, Modifier.padding(top = 16.dp))
                     Card {
                         items.forEachIndexed { index, row ->
                             if (index > 0) InsetDivider()
-                            val allowed = row.allowed
-                            val action = if (allowed == true) "deny" else "allow"
+                            // A row cut off at the AppOps layer comes back through AppOps too: a plain
+                            // grant would leave the operation ignored. Undoing never needs expert mode.
+                            val targetAction = if (row.effectiveAllowed) {
+                                if (row.editable) "deny" else "forceDeny"
+                            } else if (row.forcedOff) "forceAllow" else "allow"
+                            val switchable = (row.editable || row.forcedOff || (expert && row.forceable)) && row.allowed != null
                             ListRow(row.label,
                                 subtitle = if (row.name in failedNames) stringResource(
-                                    if (allowed == true) R.string.access_deny_failed else R.string.access_allow_failed
+                                    if (row.effectiveAllowed) R.string.access_deny_failed else R.string.access_allow_failed
                                 ) else null,
                                 subtitleColor = StatusWarning,
                                 leading = { IconTile(row.icon) },
-                                onClick = if (row.editable && !pending) ({ refresh(action, row.name) }) else null
+                                onClick = if (switchable && !pending) ({ refresh(targetAction, row.name) }) else null
                             ) {
-                                if (row.editable && allowed != null) {
-                                    JiumiSwitch(allowed, enabled = !pending) { refresh(if (it) "allow" else "deny", row.name) }
-                                } else TrailingValue(stringResource(if (allowed == null) R.string.access_read_only else
-                                    if (allowed) R.string.access_fixed_allowed else R.string.access_fixed_denied))
+                                if (switchable) {
+                                    JiumiSwitch(row.effectiveAllowed, enabled = !pending) { on ->
+                                        refresh(if (on) {
+                                            if (row.forcedOff) "forceAllow" else "allow"
+                                        } else if (row.editable) "deny" else "forceDeny", row.name)
+                                    }
+                                } else TrailingValue(stringResource(if (row.allowed == null) R.string.access_read_only else
+                                    if (row.forcedOff) R.string.access_forced_denied else
+                                    if (row.allowed == true) R.string.access_fixed_allowed else R.string.access_fixed_denied))
                             }
                         }
                     }
@@ -219,8 +241,10 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                 Feedback(stringResource(R.string.access_unknown)) { refresh(readAction) }
             }
             lock.isNotEmpty() -> GroupFooter(stringResource(when (lock) {
-                "shared" -> R.string.access_lock_shared
+                "shared" -> if (!network && expert) R.string.access_force_warning else R.string.access_lock_shared
                 "protected" -> R.string.access_lock_protected
+                "system" -> if (network) R.string.access_lock_protected
+                    else if (expert) R.string.access_force_warning else R.string.access_lock_system
                 "users" -> R.string.access_lock_users
                 "external" -> R.string.access_lock_external
                 "chain" -> R.string.access_lock_chain
