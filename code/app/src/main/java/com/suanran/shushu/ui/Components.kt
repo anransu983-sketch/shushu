@@ -14,8 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
@@ -48,8 +48,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -67,8 +65,8 @@ import androidx.compose.runtime.mutableStateListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -213,26 +211,36 @@ fun ActionText(text: String, enabled: Boolean = true, color: Color = MaterialThe
 
 @Composable
 fun JiumiSwitch(checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
-    // Drawn at three quarters size and laid out at that size too, so a row with a switch is no
-    // taller than its neighbours; the whole row stays the touch target.
-    androidx.compose.runtime.CompositionLocalProvider(
-        androidx.compose.material3.LocalMinimumInteractiveComponentSize provides Dp.Unspecified
+    // Drawn at exactly the size it lays out at. The Material switch was 52dp wide in layout
+    // and shrunk to 39dp only in drawing, so its footprint ran past the row's end; this one
+    // is 40dp wide in both, and sits 8dp inside the row's end so it never touches the card edge.
+    val thumbOffset by animateDpAsState(if (checked) 18.dp else 2.dp, animationSpec = spring(), label = "switchThumb")
+    val trackColor by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.onSurface
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f), label = "switchTrack")
+    Box(
+        modifier = Modifier
+            .size(width = 48.dp, height = 24.dp)
+            .alpha(if (enabled) 1f else 0.38f)
+            .clickable(enabled = enabled, onClick = { onCheckedChange(!checked) },
+                indication = null, interactionSource = remember { MutableInteractionSource() }),
+        contentAlignment = Alignment.CenterStart
     ) {
-    Box(Modifier.size(width = 40.dp, height = 24.dp), contentAlignment = Alignment.Center) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = enabled,
-        modifier = Modifier.requiredSize(width = 52.dp, height = 32.dp).scale(0.75f),
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = MaterialTheme.colorScheme.surface,
-            checkedTrackColor = MaterialTheme.colorScheme.onSurface,
-            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f),
-            uncheckedBorderColor = Color.Transparent
-        )
-    )
-    }
+        Box(
+            modifier = Modifier
+                .size(width = 40.dp, height = 24.dp)
+                .clip(RoundedCornerShape(50))
+                .background(trackColor)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = thumbOffset)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+            )
+        }
     }
 }
 
