@@ -194,6 +194,7 @@
     <string name="service_unpaired">Wireless debugging not paired</string>
     <string name="service_repair">Wireless debugging needs pairing again</string>
     <string name="view_timeline">Timeline</string>
+    <string name="group_switch_hint">Once off, the app gets no more of this kind of data; switching it back on restores it as it was.</string>
     <string name="range_month">30 days</string>
     <string name="log_section_time">Time</string>
     <string name="log_section_caller">Caller</string>

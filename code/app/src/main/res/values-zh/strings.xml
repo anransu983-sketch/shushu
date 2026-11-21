@@ -190,6 +190,7 @@
     <string name="service_unpaired">无线调试未配对</string>
     <string name="service_repair">无线调试需要重新配对</string>
     <string name="view_timeline">时间线</string>
+    <string name="group_switch_hint">关掉后，该应用在此类上不再拿到数据；再打开会恢复成关掉前的样子。</string>
     <string name="range_month">30 天</string>
     <string name="log_section_time">时间</string>
     <string name="log_section_caller">调用方</string>

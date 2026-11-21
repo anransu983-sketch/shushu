@@ -3,21 +3,29 @@
 
 package com.suanran.shushu.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import com.suanran.shushu.MonitorController.Range
 import com.suanran.shushu.data.AppKind
 import com.suanran.shushu.data.LogEntry
@@ -32,6 +40,8 @@ import com.suanran.shushu.R
 import com.suanran.shushu.data.AppKey
 import androidx.compose.foundation.layout.fillMaxWidth
 import com.suanran.shushu.ui.theme.StatusWarning
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /**
  * One kind of data over the chosen range, as a timeline of its records across apps. The network
@@ -47,9 +57,17 @@ fun GroupScreen(
     onOpenLog: (LogEntry) -> Unit,
     onOpenApp: (AppKey) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val network = groupId == NETWORK_GROUP
-    var byApp by rememberSaveable(groupId) { mutableStateOf(network) }
+    // The runtime permissions that gate one kind of data: the switch in the by-app view
+    // closes them. Kinds with no runtime permission (clipboard, app list, notification
+    // listener, accessibility/VPN) get no switch; background location is left out on
+    // purpose, it only refines the foreground grants the switch already closes.
+    val permissions = GROUP_PERMISSIONS[groupId].orEmpty()
+    var byApp by rememberSaveable(groupId) { mutableStateOf(true) }
     val state by controller.state.collectAsStateWithLifecycle()
+    val expert = state.expertMode
     val ledger = state.ledger
     val title = if (groupId == NETWORK_GROUP) stringResource(R.string.section_network) else groupName(groupId)
     var shown by rememberSaveable(groupId) { mutableStateOf(LOG_PAGE) }
@@ -66,6 +84,45 @@ fun GroupScreen(
     val layout = remember(entries, shown, toggled.value) { timelineRows(entries, shown, toggled.value) { it.item.t } }
     LoadMoreOnScroll(list, more = layout.more) { shown += LOG_PAGE }
 
+    // One app's permission state for the by-app switch, read on demand and kept while this
+    // kind is open; a toggle re-reads the app afterwards.
+    val accessCache = remember(groupId) { mutableStateMapOf<AppKey, JSONObject?>() }
+    val accessLoading = remember(groupId) { mutableStateMapOf<AppKey, Boolean>() }
+    val accessPending = remember(groupId) { mutableStateMapOf<AppKey, Boolean>() }
+    val appStats = remember(entries) {
+        entries.groupBy { it.key }
+            .map { (key, rows) -> GroupAppStat(key, rows.size, rows.maxOf { it.item.t }) }
+            .sortedWith(compareByDescending<GroupAppStat> { it.count }.thenByDescending { it.last })
+    }
+    fun toggleGroupAccess(key: AppKey, turnOn: Boolean) {
+        if (accessPending[key] == true) return
+        val rows = groupPermissionRows(accessCache[key], permissions)
+        if (rows.none { it.switchable(expert) }) return
+        accessPending[key] = true
+        scope.launch {
+            if (turnOn) {
+                // Restore only what this switch itself closed; when nothing was recorded,
+                // fall back to every permission of this kind that is off now.
+                val restore = deniedSet(context, key, groupId)
+                val targets = if (restore.isNotEmpty()) rows.filter { it.name in restore }
+                    else rows.filter { !it.effectiveAllowed }
+                for (row in targets) {
+                    if (!row.switchable(expert)) continue
+                    controller.appAccess(key, if (row.forcedOff) "forceAllow" else "allow", row.name)
+                }
+                clearDeniedSet(context, key, groupId)
+            } else {
+                val onRows = rows.filter { it.effectiveAllowed && it.switchable(expert) }
+                storeDeniedSet(context, key, groupId, onRows.map { it.name })
+                for (row in onRows) {
+                    controller.appAccess(key, if (row.editable) "deny" else "forceDeny", row.name)
+                }
+            }
+            accessCache[key] = controller.appAccess(key, "permissions")
+            accessPending[key] = false
+        }
+    }
+
     SubScreen(title, onBack) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
         LazyColumn(
@@ -81,21 +138,37 @@ fun GroupScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            if (network) item {
+            item {
                 ViewTabs(listOf(stringResource(R.string.view_by_app), stringResource(R.string.view_timeline)),
                     selected = if (byApp) 0 else 1, onSelect = { byApp = it == 0 }, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
             }
-            if (network && byApp) {
-                val apps = ledger?.networkApps.orEmpty()
-                if (apps.isEmpty()) item { Column(Modifier.padding(top = 12.dp)) { EmptyCard(stringResource(R.string.record_empty_running)) } }
+            if (byApp) {
+                if (network) {
+                    val apps = ledger?.networkApps.orEmpty()
+                    if (apps.isEmpty()) item { Column(Modifier.padding(top = 12.dp)) { EmptyCard(stringResource(R.string.record_empty_running)) } }
+                    else item {
+                        Column(Modifier.padding(top = 12.dp)) { Card {
+                            apps.forEachIndexed { index, app ->
+                                if (index > 0) InsetDivider(start = TIME_COLUMN_WIDTH + 60.dp)
+                                NetworkAppRow(app, labels, app.key in routineKeys) { onOpenApp(app.key) }
+                            }
+                        } }
+                    }
+                    return@LazyColumn
+                }
+                if (appStats.isEmpty()) item { Column(Modifier.padding(top = 12.dp)) { EmptyCard(stringResource(R.string.record_empty_running)) } }
                 else item {
                     Column(Modifier.padding(top = 12.dp)) { Card {
-                        apps.forEachIndexed { index, app ->
+                        appStats.forEachIndexed { index, stat ->
                             if (index > 0) InsetDivider(start = TIME_COLUMN_WIDTH + 60.dp)
-                            NetworkAppRow(app, labels, app.key in routineKeys) { onOpenApp(app.key) }
+                            GroupAppRow(stat, labels, controller, permissions, expert,
+                                accessCache, accessLoading, accessPending,
+                                onToggle = { on -> toggleGroupAccess(stat.key, on) },
+                                onOpenApp = onOpenApp)
                         }
                     } }
                 }
+                if (permissions.isNotEmpty()) item { GroupFooter(stringResource(R.string.group_switch_hint)) }
                 return@LazyColumn
             }
             // Each row names the app and what it did; the app's own page holds its summary.
@@ -105,7 +178,7 @@ fun GroupScreen(
                     app = entry.key to labels, first = first, last = last, onClick = { onOpenLog(entry) })
             }
         }
-        if (!(network && byApp)) TimelineScrubber(list, layout.rows, Modifier.align(Alignment.CenterEnd).padding(vertical = 16.dp))
+        if (!byApp) TimelineScrubber(list, layout.rows, Modifier.align(Alignment.CenterEnd).padding(vertical = 16.dp))
         }
     }
 }
@@ -128,4 +201,111 @@ private fun NetworkAppRow(app: com.suanran.shushu.data.AppSummary, labels: AppLa
             { Badges { Badge(stringResource(R.string.badge_sent_in_background, formatCount(app.sentInBackground.toLong())), StatusWarning) } }
         } else null
     ) { Chevron() }
+}
+
+/** The runtime permissions that gate one kind of data, by group id. */
+private val GROUP_PERMISSIONS = mapOf(
+    "location" to listOf("android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"),
+    "identity" to listOf("android.permission.READ_PHONE_STATE", "android.permission.READ_PHONE_NUMBERS"),
+    "contacts" to listOf("android.permission.READ_CONTACTS", "android.permission.WRITE_CONTACTS", "android.permission.GET_ACCOUNTS"),
+    "communication" to listOf("android.permission.READ_SMS", "android.permission.RECEIVE_SMS", "android.permission.SEND_SMS",
+        "android.permission.READ_CALL_LOG", "android.permission.WRITE_CALL_LOG", "android.permission.CALL_PHONE"),
+    "calendar" to listOf("android.permission.READ_CALENDAR", "android.permission.WRITE_CALENDAR"),
+    "capture" to listOf("android.permission.CAMERA", "android.permission.RECORD_AUDIO"),
+    "storage" to listOf("android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO", "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED", "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"),
+    "health" to listOf("android.permission.BODY_SENSORS", "android.permission.BODY_SENSORS_BACKGROUND", "android.permission.ACTIVITY_RECOGNITION")
+)
+
+private data class GroupAppStat(val key: AppKey, val count: Int, val last: Long)
+
+private data class GroupPermissionState(
+    val name: String, val allowed: Boolean?, val editable: Boolean, val forceable: Boolean,
+    val forced: Boolean, val fixed: Boolean, val uidMode: String?
+) {
+    /** Cut off at the AppOps layer, as the monitor reports it. */
+    val forcedOff: Boolean get() = forced
+    /** The system constrains this operation at the uid level, above anything the app can write. */
+    val uidLimited: Boolean get() = uidMode != null && uidMode != "allow"
+    /** What the app can actually do right now. */
+    val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
+    /** Same rule as the permission page: a row the system fixed, or one it constrains above the
+     * package level, has no switch, and force-off needs expert mode. */
+    fun switchable(expert: Boolean): Boolean =
+        (editable || forcedOff || (expert && forceable)) && allowed != null && !fixed && !uidLimited
+}
+
+/** This app's rows for the kind's permissions, from one probe read. */
+private fun groupPermissionRows(state: JSONObject?, permissions: List<String>): List<GroupPermissionState> {
+    val array = state?.optJSONArray("rows") ?: return emptyList()
+    return List(array.length()) { i ->
+        val item = array.getJSONObject(i)
+        val name = item.getString("name")
+        val mode = item.optString("mode").takeIf { it.isNotEmpty() }
+        GroupPermissionState(name,
+            item.takeUnless { it.isNull("allowed") }?.optBoolean("allowed"),
+            item.optBoolean("editable"), item.optBoolean("forceable"),
+            forced = if (item.has("forced")) item.optBoolean("forced") else (mode == "ignore" || mode == "deny"),
+            fixed = item.optBoolean("fixed"),
+            uidMode = item.takeUnless { it.isNull("uidMode") }?.optString("uidMode"))
+    }.filter { it.name in permissions }
+}
+
+// What this switch itself closed, so switching it back on restores exactly that and nothing
+// the app never had. The probe's own ledger records the same denials; this is only the
+// switch's memory of which of the kind's permissions were on when it closed them.
+private const val GROUP_SWITCH_PREFS = "group_switches"
+
+private fun deniedSet(context: Context, key: AppKey, groupId: String): Set<String> =
+    context.getSharedPreferences(GROUP_SWITCH_PREFS, Context.MODE_PRIVATE)
+        .getStringSet("${key.pkg}|$groupId", emptySet()).orEmpty()
+
+private fun storeDeniedSet(context: Context, key: AppKey, groupId: String, names: List<String>) {
+    context.getSharedPreferences(GROUP_SWITCH_PREFS, Context.MODE_PRIVATE).edit()
+        .putStringSet("${key.pkg}|$groupId", names.toSet()).apply()
+}
+
+private fun clearDeniedSet(context: Context, key: AppKey, groupId: String) {
+    context.getSharedPreferences(GROUP_SWITCH_PREFS, Context.MODE_PRIVATE).edit()
+        .remove("${key.pkg}|$groupId").apply()
+}
+
+/** One app in a kind's by-app list: how often it took this kind of data, and a switch to close it. */
+@Composable
+private fun GroupAppRow(
+    stat: GroupAppStat, labels: AppLabels, controller: MonitorController,
+    permissions: List<String>, expert: Boolean,
+    accessCache: MutableMap<AppKey, JSONObject?>, accessLoading: MutableMap<AppKey, Boolean>,
+    accessPending: MutableMap<AppKey, Boolean>,
+    onToggle: (Boolean) -> Unit, onOpenApp: (AppKey) -> Unit
+) {
+    LaunchedEffect(stat.key) {
+        if (permissions.isNotEmpty() && !accessCache.containsKey(stat.key)) {
+            accessLoading[stat.key] = true
+            try {
+                accessCache[stat.key] = controller.appAccess(stat.key, "permissions")
+            } finally {
+                accessLoading[stat.key] = false
+            }
+        }
+    }
+    val state = accessCache[stat.key]
+    val rows = remember(state, permissions) { groupPermissionRows(state, permissions) }
+    val on = rows.any { it.effectiveAllowed }
+    val switchable = rows.any { it.switchable(expert) }
+    ListRow(
+        title = labels.label(stat.key),
+        subtitle = pluralStringResource(R.plurals.records_count, stat.count, formatCount(stat.count.toLong())),
+        leading = { TimeColumn(stat.last); AppIcon(labels, stat.key.pkg, LEADING_SIZE) },
+        onClick = { onOpenApp(stat.key) }
+    ) {
+        when {
+            accessLoading[stat.key] == true -> CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            rows.isEmpty() -> Chevron()
+            switchable -> JiumiSwitch(on, enabled = accessPending[stat.key] != true, onCheckedChange = onToggle)
+            else -> JiumiSwitch(on, enabled = false, onCheckedChange = {})
+        }
+    }
 }
