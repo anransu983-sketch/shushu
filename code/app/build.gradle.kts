@@ -23,8 +23,8 @@ android {
         applicationId = "com.suanran.shushu"
         minSdk = 30
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.3.9"
+        versionCode = 15
+        versionName = "0.3.10"
         buildConfigField("String", "REPOSITORY", "\"$repository\"")
         externalNativeBuild { cmake { targets += "jiumi_shell" } }
     }

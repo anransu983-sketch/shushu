@@ -115,26 +115,39 @@ class Updates(private val context: Context, private val repository: String = Bui
 
     suspend fun check(): UpdateCheck = withContext(Dispatchers.IO) {
         if (!enabled) return@withContext UpdateCheck.Disabled
-        try {
-            val body = get("https://github.com/$repository/releases/latest/download/release.json").use { c ->
-                when (c.responseCode) {
-                    HttpURLConnection.HTTP_NOT_FOUND -> {
-                        prefs.edit().remove(KEY_MANIFEST).putLong(KEY_CHECKED_AT, System.currentTimeMillis()).apply()
-                        return@withContext UpdateCheck.NoRelease
+        var lastError: Exception? = null
+        // One attempt is not enough on a slow route: GitHub answers her phone in ~300-700ms
+        // and a single hiccup used to mean "检查失败". Retry the fetch; a bad manifest is
+        // returned at once, since retrying it would not help.
+        repeat(3) { attempt ->
+            try {
+                val body = get("https://github.com/$repository/releases/latest/download/release.json").use { c ->
+                    when (c.responseCode) {
+                        HttpURLConnection.HTTP_NOT_FOUND -> {
+                            prefs.edit().remove(KEY_MANIFEST).putLong(KEY_CHECKED_AT, System.currentTimeMillis()).apply()
+                            return@withContext UpdateCheck.NoRelease
+                        }
+                        in 200..299 -> c.inputStream.bufferedReader().use { it.readText() }
+                        else -> throw IOException("HTTP ${c.responseCode}")
                     }
-                    in 200..299 -> c.inputStream.bufferedReader().use { it.readText() }
-                    else -> throw IOException("HTTP ${c.responseCode}")
                 }
+                val release = ReleaseManifest.parse(body, repository, context.packageName, currentVersion)
+                prefs.edit().putString(KEY_MANIFEST, body).putLong(KEY_CHECKED_AT, System.currentTimeMillis()).apply()
+                val newer = VersionComparator.isNewer(release.tag, currentVersion)
+                UpdateNotice.available.value = release.takeIf { newer }
+                return@withContext if (newer) UpdateCheck.Available(release) else UpdateCheck.UpToDate(currentVersion)
+            } catch (e: Exception) {
+                if (e is IllegalArgumentException || e is org.json.JSONException) {
+                    android.util.Log.w(TAG, "update check failed: ${e.javaClass.simpleName}: ${e.message}")
+                    return@withContext UpdateCheck.Failed(e.message ?: e.javaClass.simpleName)
+                }
+                lastError = e
+                android.util.Log.w(TAG, "update check attempt ${attempt + 1} failed: ${e.javaClass.simpleName}: ${e.message}")
+                if (attempt < 2) kotlinx.coroutines.delay(1_000L * (attempt + 1))
             }
-            val release = ReleaseManifest.parse(body, repository, context.packageName, currentVersion)
-            prefs.edit().putString(KEY_MANIFEST, body).putLong(KEY_CHECKED_AT, System.currentTimeMillis()).apply()
-            val newer = VersionComparator.isNewer(release.tag, currentVersion)
-            UpdateNotice.available.value = release.takeIf { newer }
-            if (newer) UpdateCheck.Available(release) else UpdateCheck.UpToDate(currentVersion)
-        } catch (e: Exception) {
-            android.util.Log.w(TAG, "update check failed: ${e.javaClass.simpleName}: ${e.message}")
-            UpdateCheck.Failed(e.message ?: e.javaClass.simpleName)
         }
+        val e = lastError
+        UpdateCheck.Failed(e?.message ?: e?.javaClass?.simpleName ?: "unknown")
     }
 
     /**
@@ -209,8 +222,8 @@ class Updates(private val context: Context, private val repository: String = Bui
     private fun get(url: String): HttpURLConnection {
         require(url.startsWith("https://")) { "updates are fetched over HTTPS only" }
         return (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
+            connectTimeout = 30_000
+            readTimeout = 60_000
             instanceFollowRedirects = true
             useCaches = false
             setRequestProperty("User-Agent", "Jiumi-AppUpdate/${BuildConfig.VERSION_NAME}")

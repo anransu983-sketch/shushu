@@ -187,12 +187,15 @@ private fun UpdateRows(updates: com.suanran.shushu.update.Updates) {
             !updates.enabled -> TrailingValue(stringResource(R.string.about_not_public))
             checking -> TrailingValue(stringResource(R.string.update_checking))
             release != null -> { NewDot(); TrailingValue(stringResource(R.string.update_available, release.versionName), color = Ink.primary) }
-            else -> TrailingValue(when (found) {
-                is com.suanran.shushu.update.UpdateCheck.UpToDate -> stringResource(R.string.update_up_to_date)
-                com.suanran.shushu.update.UpdateCheck.NoRelease -> stringResource(R.string.update_no_release)
-                is com.suanran.shushu.update.UpdateCheck.Failed -> stringResource(R.string.update_failed)
-                else -> stringResource(R.string.about_version, updates.currentVersion)
-            })
+            else -> {
+                val f = found
+                TrailingValue(when (f) {
+                    is com.suanran.shushu.update.UpdateCheck.UpToDate -> stringResource(R.string.update_up_to_date)
+                    com.suanran.shushu.update.UpdateCheck.NoRelease -> stringResource(R.string.update_no_release)
+                    is com.suanran.shushu.update.UpdateCheck.Failed -> stringResource(R.string.update_failed) + " (${f.reason})"
+                    else -> stringResource(R.string.about_version, updates.currentVersion)
+                })
+            }
         }
     }
     if (updates.enabled) {
