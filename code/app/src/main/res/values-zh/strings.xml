@@ -656,6 +656,7 @@
     <string name="setup_step_shizuku_auth_title">在 Shizuku 中允许薯薯</string>
     <string name="setup_step_shizuku_auth_desc">Shizuku 会询问一次是否允许薯薯使用它。</string>
     <string name="access_permissions">权限管理</string>
+    <string name="access_permissions_hint">按应用查看并关闭权限</string>
     <string name="access_network">联网管理</string>
     <string name="access_scope">仅限当前应用</string>
     <string name="access_network_allow">允许联网</string>

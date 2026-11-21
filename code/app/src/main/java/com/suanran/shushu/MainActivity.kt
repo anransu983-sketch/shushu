@@ -124,7 +124,8 @@ class MainActivity : AppCompatActivity() {
                                 onOpenGroup = { push("group:$it") },
                                 onOpenAttention = { push("attention:$it") },
                                 onOpenLog = openLog,
-                                onOpenPairing = { push("pairing") }
+                                onOpenPairing = { push("pairing") },
+                                onOpenPermissionManager = { push("permManager") }
                             )
                             Tab.APPS -> AppsScreen(controller, labels, onOpenApp = openApp)
                             Tab.SETTINGS -> settings(onBack = null)
