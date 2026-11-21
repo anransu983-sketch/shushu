@@ -21,9 +21,15 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val pkg: String, val uid: Int, val user: Int, val lock: String?, val identity: String, val peers: List<String>
     )
     private data class Grant(val name: String, val allowed: Boolean?, val editable: Boolean,
-                             val op: String? = null, val mode: String? = null, val forceable: Boolean = false) {
-        /** The operation is cut off at the AppOps layer, whatever the permission grant says. */
-        val forcedOff: Boolean get() = mode == "ignore" || mode == "deny"
+                             val op: String? = null, val mode: String? = null, val forceable: Boolean = false,
+                             val denyMode: String = "ignore") {
+        /**
+         * Cut off at the AppOps layer, whatever the permission grant says. A background location
+         * row is off when its operation is foreground-only: the system will not take "ignore"
+         * for it, and "foreground" is its own "only while in use" state.
+         */
+        val forcedOff: Boolean get() = mode == "ignore" || mode == "deny" ||
+            (denyMode == "foreground" && mode == "foreground")
         /** What the app can actually do right now. */
         val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
     }
@@ -42,6 +48,11 @@ internal class AppAccess(context: Context, directory: File, private val self: St
 
     private fun command(vararg args: String): String? =
         runCatching { Shell.run(args.toList()) }.getOrNull()?.takeIf { it.exitCode == 0 }?.output?.trimEnd()
+
+    /** A command's exit code and output, for saying what the system answered when a change failed. */
+    private fun commandOutput(vararg args: String): String? =
+        runCatching { Shell.run(args.toList()) }.getOrNull()
+            ?.let { "${it.exitCode}: ${it.output.trimEnd().take(300)}" }
 
     private fun target(pkg: String, uid: Int, user: Int): Target? {
         if (uid < 0 || uid / USER_RANGE != user) return null
@@ -91,7 +102,8 @@ internal class AppAccess(context: Context, directory: File, private val self: St
                 flags.none { it == "SYSTEM_FIXED" || it == "POLICY_FIXED" || it == "GRANTED_BY_ROLE" }
             val op = opFor(name)
             Grant(name, state?.groupValues?.get(2)?.toBooleanStrictOrNull(), editable,
-                op, op?.let { modes[it] }, forceable = op != null && t.lock != "protected")
+                op, op?.let { modes[it] }, forceable = op != null && t.lock != "protected",
+                denyMode = if (name == "android.permission.ACCESS_BACKGROUND_LOCATION") "foreground" else "ignore")
         }
     }
 
@@ -134,6 +146,7 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         }
         val failed = JSONArray()
         var changed = 0
+        var lastDetail: String? = null
         for (row in changes) {
             // A row cut off at the AppOps layer can only come back through AppOps, even when the
             // plain allow path would otherwise do: granting the permission alone would leave the
@@ -152,7 +165,8 @@ internal class AppAccess(context: Context, directory: File, private val self: St
             }
             if (useForce) {
                 val op = row.op ?: continue
-                command("appops", "set", "--user", "${t.user}", t.pkg, op, if (allow) "allow" else "ignore")
+                lastDetail = commandOutput("appops", "set", "--user", "${t.user}", t.pkg, op,
+                    if (allow) "allow" else row.denyMode)
                 // Best effort: also move the runtime grant, which succeeds unless the system fixed it.
                 command("pm", if (allow) "grant" else "revoke", "--user", "${t.user}", t.pkg, row.name)
             } else {
@@ -184,11 +198,12 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         return JSONObject().put("lock", t.lock)
             .put("rows", JSONArray(rows.map {
                 JSONObject().put("name", it.name).put("allowed", it.allowed).put("editable", it.editable)
-                    .put("forceable", it.forceable)
+                    .put("forceable", it.forceable).put("forced", it.forcedOff)
                     .apply { it.op?.let { put("op", it) }; it.mode?.let { put("mode", it) } }
             }))
             .put("restore", rows.any { (it.editable && it.allowed == false || it.forceable && it.forcedOff) && owned.optBoolean(it.name) })
             .put("changed", changed).put("failed", failed)
+            .apply { lastDetail?.let { put("detail", it) } }
     }
 
     private fun connectivity(vararg args: String) = command("cmd", "connectivity", *args)

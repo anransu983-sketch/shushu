@@ -103,19 +103,38 @@ fun PermissionManagerScreen(controller: MonitorController, labels: AppLabels,
         } else if (shown.isEmpty()) {
             GroupFooter(stringResource(R.string.apps_empty))
         } else {
+            // User apps and system components in their own groups, each under its own title.
+            val userApps = shown.filter { !it.first.preinstalled }
+            val systemApps = shown.filter { it.first.preinstalled }
             LazyColumn(Modifier.fillMaxWidth()) {
-                items(shown, key = { it.first.pkg }) { (app, name) ->
-                    Card {
-                        ListRow(name,
-                            subtitle = app.pkg,
-                            leading = { AppIcon(labels, app.pkg, 36) },
-                            onClick = { onOpenAccess(AppKey(app.uid, app.pkg)) }
-                        ) { Chevron() }
+                if (userApps.isNotEmpty()) {
+                    item { GroupTitle(stringResource(R.string.perm_manager_user), Modifier.padding(top = 4.dp)) }
+                    items(userApps, key = { it.first.pkg }) { (app, name) ->
+                        AppRow(labels, app, name, onOpenAccess)
+                        Spacer(Modifier.height(8.dp))
                     }
-                    Spacer(Modifier.height(8.dp))
+                }
+                if (systemApps.isNotEmpty()) {
+                    item { GroupTitle(stringResource(R.string.perm_manager_system), Modifier.padding(top = 16.dp)) }
+                    items(systemApps, key = { it.first.pkg }) { (app, name) ->
+                        AppRow(labels, app, name, onOpenAccess)
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
             }
         }
         if (!expert) GroupFooter(stringResource(R.string.perm_manager_expert_hint))
+    }
+}
+
+@Composable
+private fun AppRow(labels: AppLabels, app: MonitorController.ListedApp, name: String,
+                   onOpenAccess: (AppKey) -> Unit) {
+    Card {
+        ListRow(name,
+            subtitle = app.pkg,
+            leading = { AppIcon(labels, app.pkg, 36) },
+            onClick = { onOpenAccess(AppKey(app.uid, app.pkg)) }
+        ) { Chevron() }
     }
 }

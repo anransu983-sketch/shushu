@@ -49,10 +49,11 @@ import org.json.JSONObject
 
 private data class PermissionRow(
     val name: String, val label: String, val group: String, val icon: ImageVector,
-    val allowed: Boolean?, val editable: Boolean, val mode: String? = null, val forceable: Boolean = false
+    val allowed: Boolean?, val editable: Boolean, val mode: String? = null, val forceable: Boolean = false,
+    val forced: Boolean = false
 ) {
-    /** Cut off at the AppOps layer, whatever the permission grant says. */
-    val forcedOff: Boolean get() = mode == "ignore" || mode == "deny"
+    /** Cut off at the AppOps layer, as the monitor reports it; a background row is off in foreground-only mode. */
+    val forcedOff: Boolean get() = forced
     /** What the app can actually do right now. */
     val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
 }
@@ -123,7 +124,8 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                 else -> JiumiIcons.Lock
             }
             PermissionRow(name, label, group, icon, item.takeUnless { it.isNull("allowed") }?.optBoolean("allowed"),
-                editable, mode, forceable)
+                editable, mode, forceable,
+                forced = if (item.has("forced")) item.optBoolean("forced") else (mode == "ignore" || mode == "deny"))
         }
     }
     val enabled = rows.filter { it.editable && it.allowed == true }
@@ -226,6 +228,9 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                         }
                     }
                 }
+            // What the system itself answered, when a change did not take: the monitor's own words.
+            val detail = state?.optString("detail").orEmpty()
+            if (failedNames.isNotEmpty() && detail.isNotEmpty()) GroupFooter(detail, warning = true)
         }
 
         when {
