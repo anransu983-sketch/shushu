@@ -664,7 +664,7 @@
     <string name="setup_step_shizuku_auth_title">Allow Shushu in Shizuku</string>
     <string name="setup_step_shizuku_auth_desc">Shizuku asks once whether Shushu may use it.</string>
     <string name="access_permissions">Permissions</string>
-    <string name="access_permissions_hint">See and switch off each app's permissions</string>
+    <string name="access_permissions_hint">See and switch off permissions for each app</string>
     <string name="access_network">Network access</string>
     <string name="access_scope">This app only</string>
     <string name="access_network_allow">Allow network access</string>

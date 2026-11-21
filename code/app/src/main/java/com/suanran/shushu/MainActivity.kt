@@ -94,7 +94,6 @@ class MainActivity : AppCompatActivity() {
                     onOpenTheme = { push("theme") }, onOpenLanguage = { push("language") },
                     onOpenSpool = { push("spool") }, onOpenSessions = { push("sessions") }, onOpenExport = { push("export") },
                     onOpenAbout = { push("about") }, onOpenPairing = { push("pairing") },
-                    onOpenPermissionManager = { push("permManager") },
                     onOpenMonitor = { stack = listOf(); tab = Tab.MONITOR })
                 val setupDone by preferences.setupDone.collectAsStateWithLifecycle()
                 // On opening, a check for a newer release when one is due; a release found is offered once
