@@ -121,7 +121,7 @@ internal class AppAccess(context: Context, directory: File, private val self: St
      * mode wins over the package-level one, and `appops get` prints it as a `Uid mode:` line.
      */
     private fun opModes(pkg: String): Pair<Map<String, String>, Map<String, String>> {
-        val out = command("appops", "get", pkg) ?: return emptyMap() to emptyMap()
+        val out = command("appops", "get", pkg) ?: return Pair(emptyMap<String, String>(), emptyMap<String, String>())
         val packageModes = mutableMapOf<String, String>()
         val uidModes = mutableMapOf<String, String>()
         for (raw in out.lines()) {
