@@ -687,6 +687,9 @@
     <string name="access_lock_protected">This system identity is protected.</string>
     <string name="access_lock_system">A core system component. Expert mode can force its permissions off.</string>
     <string name="access_forced_denied">Forced off</string>
+    <string name="access_fixed_system">Fixed by the system. Cannot be turned off.</string>
+    <string name="access_uid_foreground">System limit: foreground only</string>
+    <string name="access_uid_denied">System limit: off</string>
     <string name="access_force_warning">Expert mode: forcing a permission off can break this component and what depends on it. It can be undone here.</string>
     <string name="perm_manager_expert_hint">Core system components appear only in expert mode.</string>
     <string name="access_lock_users">This firewall command can affect other Android users or profiles.</string>

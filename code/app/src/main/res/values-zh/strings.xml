@@ -679,6 +679,9 @@
     <string name="access_lock_protected">此系统身份受保护。</string>
     <string name="access_lock_system">系统核心组件，专家模式可强制关闭其权限。</string>
     <string name="access_forced_denied">已强制关闭</string>
+    <string name="access_fixed_system">系统固定授权，无法关闭</string>
+    <string name="access_uid_foreground">系统限制：仅前台</string>
+    <string name="access_uid_denied">系统限制：已关闭</string>
     <string name="access_force_warning">专家模式：强制关闭可能让此组件及依赖它的功能失效，可在此恢复。</string>
     <string name="perm_manager_expert_hint">系统核心组件只在专家模式下列出。</string>
     <string name="access_lock_users">此防火墙命令可能影响其他用户或工作资料。</string>

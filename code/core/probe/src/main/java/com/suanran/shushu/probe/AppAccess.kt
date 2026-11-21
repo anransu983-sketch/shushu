@@ -22,14 +22,17 @@ internal class AppAccess(context: Context, directory: File, private val self: St
     )
     private data class Grant(val name: String, val allowed: Boolean?, val editable: Boolean,
                              val op: String? = null, val mode: String? = null, val forceable: Boolean = false,
-                             val denyMode: String = "ignore") {
+                             val denyMode: String = "ignore", val fixed: Boolean = false,
+                             val uidMode: String? = null) {
+        /** The mode that actually decides: a uid-level mode wins over the package-level one. */
+        val effectiveMode: String? get() = uidMode ?: mode
         /**
          * Cut off at the AppOps layer, whatever the permission grant says. A background location
          * row is off when its operation is foreground-only: the system will not take "ignore"
          * for it, and "foreground" is its own "only while in use" state.
          */
-        val forcedOff: Boolean get() = mode == "ignore" || mode == "deny" ||
-            (denyMode == "foreground" && mode == "foreground")
+        val forcedOff: Boolean get() = effectiveMode == "ignore" || effectiveMode == "deny" ||
+            (denyMode == "foreground" && effectiveMode == "foreground")
         /** What the app can actually do right now. */
         val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
     }
@@ -92,7 +95,10 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val runtimeNames = runtime.map { it.groupValues[1] }.toSet()
         val requested = lines.subList(start, userStart).dropWhile { it.trim() != "requested permissions:" }.drop(1)
             .takeWhile { it.startsWith("      ") }.map(String::trim).filter(permissionName::matches)
-        val modes = opModes(t.pkg)
+        val (modes, uidModes) = opModes(t.pkg)
+        // A system package's fixed runtime grants cannot be moved by writing the op: the system
+        // recomputes the mode from the grant, so writing only leaves side effects behind.
+        val isSystemPackage = lines.any { it.trim().startsWith("pkgFlags=") && "SYSTEM" in it }
         return requested.distinct().map { name ->
             val state = states[name]
             val flags = state?.groupValues?.get(3).orEmpty().split('|').map(String::trim)
@@ -101,19 +107,32 @@ internal class AppAccess(context: Context, directory: File, private val self: St
                 info?.protection == PermissionInfo.PROTECTION_DANGEROUS &&
                 flags.none { it == "SYSTEM_FIXED" || it == "POLICY_FIXED" || it == "GRANTED_BY_ROLE" }
             val op = opFor(name)
+            val fixed = name in runtimeNames && info?.protection == PermissionInfo.PROTECTION_DANGEROUS &&
+                flags.any { it == "SYSTEM_FIXED" || it == "POLICY_FIXED" } && isSystemPackage
             Grant(name, state?.groupValues?.get(2)?.toBooleanStrictOrNull(), editable,
-                op, op?.let { modes[it] }, forceable = op != null && t.lock != "protected",
-                denyMode = if (name == "android.permission.ACCESS_BACKGROUND_LOCATION") "foreground" else "ignore")
+                op, op?.let { modes[it] }, forceable = op != null && t.lock != "protected" && !fixed,
+                denyMode = if (name == "android.permission.ACCESS_BACKGROUND_LOCATION") "foreground" else "ignore",
+                fixed = fixed, uidMode = op?.let { uidModes[it] })
         }
     }
 
-    /** The AppOps mode of each operation of [pkg]: "allow", "ignore", "deny", "foreground", or absent. */
-    private fun opModes(pkg: String): Map<String, String> {
-        val out = command("appops", "get", pkg) ?: return emptyMap()
-        return out.lines().mapNotNull { line ->
-            val match = opModeRow.find(line.trim()) ?: return@mapNotNull null
-            normalizeOp(match.groupValues[1]) to match.groupValues[2]
-        }.toMap()
+    /**
+     * The AppOps mode of each operation of [pkg], package-level and uid-level apart: a uid-level
+     * mode wins over the package-level one, and `appops get` prints it as a `Uid mode:` line.
+     */
+    private fun opModes(pkg: String): Pair<Map<String, String>, Map<String, String>> {
+        val out = command("appops", "get", pkg) ?: return emptyMap() to emptyMap()
+        val packageModes = mutableMapOf<String, String>()
+        val uidModes = mutableMapOf<String, String>()
+        for (raw in out.lines()) {
+            val line = raw.trim()
+            val uid = line.startsWith("Uid mode:")
+            val body = if (uid) line.removePrefix("Uid mode:").trim() else line
+            val match = opModeRow.find(body) ?: continue
+            val op = normalizeOp(match.groupValues[1])
+            if (uid) uidModes[op] = match.groupValues[2] else packageModes[op] = match.groupValues[2]
+        }
+        return packageModes to uidModes
     }
 
     /** The AppOps operation a permission gates, if any: reflection first, a short list as backup. */
@@ -136,7 +155,7 @@ internal class AppAccess(context: Context, directory: File, private val self: St
         val force = action.startsWith("force")
         val allow = action == "allow" || action == "restoreAll" || action == "forceAllow" || action == "forceRestoreAll"
         val changes = when (action) {
-            "deny", "allow" -> rows.filter { it.name == name }
+            "deny", "allow" -> rows.filter { it.name == name && !it.fixed }
             "forceDeny", "forceAllow" -> rows.filter { it.name == name && it.forceable }
             "denyAll" -> rows.filter { it.editable && it.allowed == true }
             "forceDenyAll" -> rows.filter { it.forceable && it.effectiveAllowed }
@@ -194,12 +213,18 @@ internal class AppAccess(context: Context, directory: File, private val self: St
             }
             write(saved)
         }
-        if (action in setOf("deny", "allow", "forceDeny", "forceAllow") && changes.isEmpty()) failed.put(name)
+        // A fixed row is never attempted and never reported as failed: there is nothing to do.
+        if (action in setOf("deny", "allow", "forceDeny", "forceAllow") && changes.isEmpty() &&
+            rows.none { it.name == name && it.fixed }) failed.put(name)
         return JSONObject().put("lock", t.lock)
             .put("rows", JSONArray(rows.map {
                 JSONObject().put("name", it.name).put("allowed", it.allowed).put("editable", it.editable)
-                    .put("forceable", it.forceable).put("forced", it.forcedOff)
-                    .apply { it.op?.let { put("op", it) }; it.mode?.let { put("mode", it) } }
+                    .put("forceable", it.forceable).put("forced", it.forcedOff).put("fixed", it.fixed)
+                    .apply {
+                        it.op?.let { put("op", it) }
+                        it.mode?.let { put("mode", it) }
+                        it.uidMode?.let { put("uidMode", it) }
+                    }
             }))
             .put("restore", rows.any { (it.editable && it.allowed == false || it.forceable && it.forcedOff) && owned.optBoolean(it.name) })
             .put("changed", changed).put("failed", failed)

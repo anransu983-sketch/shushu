@@ -50,10 +50,12 @@ import org.json.JSONObject
 private data class PermissionRow(
     val name: String, val label: String, val group: String, val icon: ImageVector,
     val allowed: Boolean?, val editable: Boolean, val mode: String? = null, val forceable: Boolean = false,
-    val forced: Boolean = false
+    val forced: Boolean = false, val fixed: Boolean = false, val uidMode: String? = null
 ) {
     /** Cut off at the AppOps layer, as the monitor reports it; a background row is off in foreground-only mode. */
     val forcedOff: Boolean get() = forced
+    /** The system constrains this operation at the uid level, above anything the app can write. */
+    val uidLimited: Boolean get() = uidMode != null && uidMode != "allow"
     /** What the app can actually do right now. */
     val effectiveAllowed: Boolean get() = allowed == true && !forcedOff
 }
@@ -125,7 +127,9 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
             }
             PermissionRow(name, label, group, icon, item.takeUnless { it.isNull("allowed") }?.optBoolean("allowed"),
                 editable, mode, forceable,
-                forced = if (item.has("forced")) item.optBoolean("forced") else (mode == "ignore" || mode == "deny"))
+                forced = if (item.has("forced")) item.optBoolean("forced") else (mode == "ignore" || mode == "deny"),
+                fixed = item.optBoolean("fixed"),
+                uidMode = item.takeUnless { it.isNull("uidMode") }?.optString("uidMode"))
         }
     }
     val enabled = rows.filter { it.editable && it.allowed == true }
@@ -206,12 +210,17 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                             val targetAction = if (row.effectiveAllowed) {
                                 if (row.editable) "deny" else "forceDeny"
                             } else if (row.forcedOff) "forceAllow" else "allow"
-                            val switchable = (row.editable || row.forcedOff || (expert && row.forceable)) && row.allowed != null
+                            // A row the system fixed, or one the system constrains above the package
+                            // level, has no switch: writing it cannot work and only leaves side effects.
+                            val switchable = (row.editable || row.forcedOff || (expert && row.forceable)) &&
+                                row.allowed != null && !row.fixed && !row.uidLimited
                             ListRow(row.label,
                                 subtitle = if (row.name in failedNames) stringResource(
                                     if (row.effectiveAllowed) R.string.access_deny_failed else R.string.access_allow_failed
+                                ) else if (row.uidLimited) stringResource(
+                                    if (row.uidMode == "foreground") R.string.access_uid_foreground else R.string.access_uid_denied
                                 ) else null,
-                                subtitleColor = StatusWarning,
+                                subtitleColor = if (row.name in failedNames) StatusWarning else MaterialTheme.colorScheme.onSurfaceVariant,
                                 leading = { IconTile(row.icon) },
                                 onClick = if (switchable && !pending) ({ refresh(targetAction, row.name) }) else null
                             ) {
@@ -221,8 +230,9 @@ fun AppAccessScreen(controller: MonitorController, labels: AppLabels, key: AppKe
                                             if (row.forcedOff) "forceAllow" else "allow"
                                         } else if (row.editable) "deny" else "forceDeny", row.name)
                                     }
-                                } else TrailingValue(stringResource(if (row.allowed == null) R.string.access_read_only else
-                                    if (row.forcedOff) R.string.access_forced_denied else
+                                } else TrailingValue(stringResource(if (row.fixed) R.string.access_fixed_system else
+                                    if (row.allowed == null) R.string.access_read_only else
+                                    if (row.forcedOff) (if (row.uidLimited) R.string.access_fixed_denied else R.string.access_forced_denied) else
                                     if (row.allowed == true) R.string.access_fixed_allowed else R.string.access_fixed_denied))
                             }
                         }
